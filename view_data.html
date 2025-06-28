@@ -1,0 +1,7 @@
+
+<!DOCTYPE html>
+<html><head><title>Attendance Data</title></head><body>
+<h2>Attendance Sheet</h2><table border="1">
+{% for row in records %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+</table><a href="/dashboard">Back to Dashboard</a>
+</body></html>

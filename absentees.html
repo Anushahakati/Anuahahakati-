@@ -1,0 +1,7 @@
+
+<!DOCTYPE html>
+<html><head><title>Today's Absentees</title></head><body>
+<h2>Absentees for {{ date }}</h2><ul>
+{% for name in absentees %}<li>{{ name }}</li>{% endfor %}
+</ul><a href="/dashboard">Back to Dashboard</a>
+</body></html>
