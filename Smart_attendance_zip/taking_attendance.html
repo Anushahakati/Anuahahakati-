@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Taking Attendance</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #f4f4f4; }
+        .box {
+            background: white; padding: 30px; border-radius: 10px;
+            max-width: 400px; margin: auto;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        .loader {
+            border: 6px solid #f3f3f3; border-top: 6px solid #28a745;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        a {
+            color: #007BFF;
+            text-decoration: none;
+            display: block;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Taking Attendance...</h2>
+        <div class="loader"></div>
+        <p>Please wait while the system records attendance using facial recognition.</p>
+        <a href="/dashboard">Back to Dashboard</a>
+    </div>
+</body>
+</html>

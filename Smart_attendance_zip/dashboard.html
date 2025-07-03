@@ -1,0 +1,15 @@
+
+<!DOCTYPE html>
+<html>
+<head><title>Dashboard</title></head>
+<body>
+  <h2>Smart Attendance Dashboard</h2>
+  <ul>
+    <li><a href="/view_data">View Attendance Data</a></li>
+    <li><a href="/shortage">View Attendance Shortage</a></li>
+    <li><a href="/absentees_today">View Today's Absentees</a></li>
+    <li><a href="/run_attendance">Start Attendance Now</a></li>
+  </ul>
+  {% if msg %}<p style="color:green">{{ msg }}</p>{% endif %}
+</body>
+</html>
