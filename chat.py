@@ -1,3 +1,4 @@
+
 import face_recognition
 import cv2
 import numpy as np
@@ -9,7 +10,7 @@ from openpyxl import load_workbook, Workbook
 import os
 
 # Set attendance time manually here
-START_TIME = dt_time(hour=11, minute=11)
+START_TIME = dt_time(hour=15, minute=17)
 print(f"Attendance scheduled for: {START_TIME.strftime('%H:%M')}")
 
 # Image paths for face recognition
@@ -28,7 +29,7 @@ SPREADSHEET_ID = "1j5cxov8g0jl4Ou6M2ehzcwA-MPBXO8pn85nHTCHFqAg"
 spreadsheet = gc.open_by_key(SPREADSHEET_ID)
 
 # Excel File Path
-EXCEL_PATH = "C:/Users/anush/Downloads/Minee/attend.xlsx"
+EXCEL_PATH = "C:/Users/anush/Downloads/SmartAttendanceWeb-main/attend.xlsx"
 
 # Load known faces
 known_face_encodings = []
