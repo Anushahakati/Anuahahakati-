@@ -8,7 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.secret_key = 'secret_key'
 
 # 🔥 Increase request size limit to 16MB (you can adjust this)
