@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remove Student</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; text-align: center; padding: 50px; }
+        .form-box {
+            background: white; padding: 30px; border-radius: 10px;
+            max-width: 400px; margin: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        select, button {
+            padding: 10px; width: 80%; margin: 10px auto;
+            display: block; border: 1px solid #ccc; border-radius: 5px;
+        }
+        button {
+            background-color: #dc3545; color: white;
+            border: none; cursor: pointer;
+        }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007BFF;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-box">
+        <h2>Remove Student</h2>
+        <form method="POST" action="/remove-student">
+            <select name="name" required>
+                {% for student in students %}
+                    <option value="{{ student }}">{{ student }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Delete Student</button>
+        </form>
+        <a href="/dashboard">Back to Dashboard</a>
+    </div>
+</body>
+</html>
