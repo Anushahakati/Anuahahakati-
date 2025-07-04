@@ -23,13 +23,13 @@ creds_b64 = os.environ['GOOGLE_CREDS_B64']
 creds_json = base64.b64decode(creds_b64).decode('utf-8')
 credentials = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
 gc = gspread.authorize(credentials)
-spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
+spreadsheet = gc.open_by_key('1j5cxov8g0jl4Ou6M2ehzcwA-MPBXO8pn85nHTCHFqAg')
 sheet = spreadsheet.worksheet("Attendance")
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == 'Bcca' and request.form['password'] == 'Bcca':
+        if request.form['username'] == 'bcca' and request.form['password'] == 'bcca':
             session['user'] = 'admin'
             return redirect('/dashboard')
         else:
@@ -71,13 +71,13 @@ def absentees_today():
     absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
     return render_template('absentees.html', absentees=absentees, date=today)
 
-@app.route('/run_attendance', methods=['GET', 'POST'])
+@app.route('/run_attendance')
 def run_attendance():
     if 'user' not in session:
         return redirect('/')
     subprocess.Popen(["python", "chat.py", "--manual"])
     return render_template('dashboard.html', msg="Manual attendance started.")
-
+    
 def upload_to_drive(file_path, file_name, folder_id):
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
     drive_service = build('drive', 'v3', credentials=creds)
@@ -111,13 +111,13 @@ def add_student():
 
                 filename = f"{name}.png"
                 os.makedirs("data", exist_ok=True)
-                local_path = os.path.join("attendance_photos", filename)
+                local_path = os.path.join("data", filename)
                 with open(local_path, "wb") as f:
                     f.write(image_bytes)
 
                 if os.path.exists("SmartAttendanceWeb"):
-                    os.makedirs(os.path.join("SmartAttendanceWeb", "attendance_photos"), exist_ok=True)
-                    git_path = os.path.join("SmartAttendanceWeb", "attendance_photos", filename)
+                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
+                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
                     with open(git_path, "wb") as f:
                         f.write(image_bytes)
 
@@ -141,7 +141,7 @@ def add_student():
         return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
 
     return render_template('add_student.html')
-
+    
 @app.route('/remove-student', methods=['GET', 'POST'])
 def remove_student():
     if 'user' not in session:
