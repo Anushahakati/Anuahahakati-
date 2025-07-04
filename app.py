@@ -69,10 +69,14 @@ def take_attendance():
         print("Error:", e)
         return jsonify({"message": f"❌ Error: {str(e)}"}), 500
 
-# ✅ This route was missing in your app — added to fix the BuildError
+# ✅ Add all missing routes below
 @app.route('/view-data')
 def view_data():
-    return render_template('view_data.html')  # Make sure view_data.html exists!
+    return render_template('view_data.html')
+
+@app.route('/shortage')
+def shortage():
+    return render_template('shortage.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=True)
