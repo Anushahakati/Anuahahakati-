@@ -84,7 +84,6 @@
       position: relative;
     }
 
-    /* Face matte frame */
     .face-frame {
       position: absolute;
       top: 50%;
@@ -101,13 +100,10 @@
 
     .modal-buttons {
       margin-top: 15px;
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
     }
+
     .modal-buttons button {
-      flex: 1;
-      padding: 12px;
+      padding: 12px 20px;
       font-size: 15px;
       font-weight: 600;
       background-color: #45f3ff;
@@ -116,6 +112,7 @@
       cursor: pointer;
       color: #252432;
     }
+
     .modal-buttons button:hover {
       background-color: #252432;
       color: #45f3ff;
@@ -134,11 +131,10 @@
   <a href="{{ url_for('add_student') }}">Add Student</a>
   <a href="{{ url_for('remove_student') }}">Remove Student</a>
 
-  <!-- Open Camera Button -->
+  <!-- New Button that opens camera modal -->
   <button onclick="openCamera()">Take Attendance</button>
 </div>
 
-<!-- Optional Flask Message -->
 {% if msg %}
   <p class="msg">{{ msg }}</p>
 {% endif %}
@@ -151,7 +147,6 @@
       <div class="face-frame"></div>
     </div>
     <div class="modal-buttons">
-      <button onclick="capture()">Capture & Save</button>
       <button onclick="closeCamera()">Back to Dashboard</button>
     </div>
   </div>
@@ -159,10 +154,18 @@
 
 <script>
   function openCamera() {
-    document.getElementById('cameraModal').style.display = 'flex';
+    const modal = document.getElementById('cameraModal');
+    modal.style.display = 'flex';
+
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
-        document.getElementById('video').srcObject = stream;
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+
+        // Auto-capture after 2 seconds
+        setTimeout(() => {
+          captureAndSendFrame();
+        }, 2000);
       })
       .catch(err => {
         alert("Camera access failed: " + err.message);
@@ -182,17 +185,18 @@
     modal.style.display = 'none';
   }
 
-  function capture() {
+  function captureAndSendFrame() {
     const video = document.getElementById('video');
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0);
 
-    const image = canvas.toDataURL('image/png');
+    const image = canvas.toDataURL('image/jpeg');
 
-    fetch('/take-attendance', {
+    fetch('/take_attendance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image })
