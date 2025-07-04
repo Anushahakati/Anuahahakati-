@@ -71,13 +71,13 @@ def absentees_today():
     absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
     return render_template('absentees.html', absentees=absentees, date=today)
 
-@app.route('/run_attendance')
+@app.route('/run_attendance', methods=['GET', 'POST'])
 def run_attendance():
     if 'user' not in session:
         return redirect('/')
     subprocess.Popen(["python", "chat.py", "--manual"])
     return render_template('dashboard.html', msg="Manual attendance started.")
-    
+
 def upload_to_drive(file_path, file_name, folder_id):
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
     drive_service = build('drive', 'v3', credentials=creds)
@@ -141,7 +141,7 @@ def add_student():
         return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
 
     return render_template('add_student.html')
-    
+
 @app.route('/remove-student', methods=['GET', 'POST'])
 def remove_student():
     if 'user' not in session:
