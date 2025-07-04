@@ -23,7 +23,7 @@ creds_b64 = os.environ['GOOGLE_CREDS_B64']
 creds_json = base64.b64decode(creds_b64).decode('utf-8')
 credentials = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
 gc = gspread.authorize(credentials)
-spreadsheet = gc.open_by_key('1j5cxov8g0jl4Ou6M2ehzcwA-MPBXO8pn85nHTCHFqAg')
+spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
 @app.route('/', methods=['GET', 'POST'])
