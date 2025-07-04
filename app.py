@@ -1,19 +1,17 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
-import subprocess
+import base64, os, json
+import cv2
+import numpy as np
 import gspread
-import os, json, base64
-from google.oauth2.service_account import Credentials
 from datetime import datetime
+from google.oauth2.service_account import Credentials
 from werkzeug.middleware.proxy_fix import ProxyFix
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
-
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Google Sheets setup
+# === Google Sheets Setup ===
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
@@ -42,36 +40,30 @@ def dashboard():
     msg = request.args.get('msg')
     return render_template('dashboard.html', msg=msg)
 
-@app.route('/view_data')
+@app.route('/view-data')
 def view_data():
     if 'user' not in session:
         return redirect('/')
-    records = sheet.get_all_values()
-    return render_template('view_data.html', records=records)
+    data = sheet.get_all_records()
+    return render_template('view_data.html', records=data)
 
 @app.route('/shortage')
 def shortage():
-    if 'user' not in session:
-        return redirect('/')
-    records = sheet.get_all_values()
-    headers = records[0][1:]
-    result = []
-    for row in records[1:]:
-        present_count = row[1:].count('Present')
-        if present_count < len(headers) * 0.75:
-            result.append([row[0], present_count, len(headers)])
-    return render_template('shortage.html', result=result)
+    return render_template('shortage.html')
 
-@app.route('/absentees_today')
+@app.route('/absentees-today')
 def absentees_today():
-    if 'user' not in session:
-        return redirect('/')
-    today = datetime.now().strftime('%Y-%m-%d')
-    records = sheet.get_all_records()
-    absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
-    return render_template('absentees.html', absentees=absentees, date=today)
+    return render_template('absentees_today.html')
 
-# ✅ MODIFIED: Take Attendance with image capture
+@app.route('/add-student')
+def add_student():
+    return render_template('add_student.html')
+
+@app.route('/remove-student')
+def remove_student():
+    return render_template('remove_student.html')
+
+# === Take Attendance Route ===
 @app.route('/take-attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
@@ -79,94 +71,25 @@ def take_attendance():
 
     try:
         data = request.get_json()
-        img_data = data['image'].split(',')[1]
+        image_data = data['image'].split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        os.makedirs("temp", exist_ok=True)
-        with open("temp/temp.png", "wb") as f:
-            f.write(base64.b64decode(img_data))
+        # --- Dummy face recognition logic (replace with actual recognition) ---
+        student_name = "Anu"
+        roll_number = "73"
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        subprocess.run(["python", "chat.py", "--manual"])
-        return jsonify({"message": "✅ Attendance process completed."})
+        # === Update Google Sheet ===
+        sheet.append_row([timestamp, roll_number, student_name, "Present"])
+
+        return jsonify({"message": f"✅ Attendance taken for {student_name} ({roll_number})"})
 
     except Exception as e:
-        return jsonify({"message": f"⚠️ Error: {str(e)}"}), 500
-
-def upload_to_drive(file_path, file_name, folder_id):
-    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
-    drive_service = build('drive', 'v3', credentials=creds)
-    file_metadata = {
-        'name': file_name,
-        'parents': [folder_id]
-    }
-    media = MediaFileUpload(file_path, mimetype='image/png')
-    uploaded = drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id'
-    ).execute()
-    return uploaded.get('id')
-
-@app.route('/add-student', methods=['GET', 'POST'])
-def add_student():
-    if 'user' not in session:
-        return redirect('/')
-
-    if request.method == 'POST':
-        name = request.form['name']
-        photo_data = request.form['photo']
-
-        if photo_data:
-            try:
-                header, encoded = photo_data.split(",", 1)
-                image_bytes = base64.b64decode(encoded)
-
-                filename = f"{name}.png"
-                os.makedirs("data", exist_ok=True)
-                local_path = os.path.join("data", filename)
-                with open(local_path, "wb") as f:
-                    f.write(image_bytes)
-
-                if os.path.exists("SmartAttendanceWeb"):
-                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
-                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
-                    with open(git_path, "wb") as f:
-                        f.write(image_bytes)
-
-                try:
-                    upload_to_drive(local_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
-                except Exception as e:
-                    print("Drive upload failed:", e)
-
-            except Exception as e:
-                print("Image processing error:", e)
-                return "Invalid image data", 400
-
-        try:
-            existing_data = sheet.get_all_values()
-            new_row = [name] + ['' for _ in range(len(existing_data[0]) - 1)]
-            sheet.append_row(new_row)
-        except Exception as e:
-            print("Google Sheet append error:", e)
-            return "Sheet update failed", 500
-
-        return redirect(url_for('dashboard', msg="✅ Student added and photo uploaded."))
-
-    return render_template('add_student.html')
-
-@app.route('/remove-student', methods=['GET', 'POST'])
-def remove_student():
-    if 'user' not in session:
-        return redirect('/')
-    student_names = [row[0] for row in sheet.get_all_values()[1:]]
-    if request.method == 'POST':
-        name_to_remove = request.form['name']
-        records = sheet.get_all_values()
-        for idx, row in enumerate(records):
-            if row[0] == name_to_remove:
-                sheet.delete_rows(idx + 1)
-                break
-        return redirect('/dashboard')
-    return render_template('remove_student.html', students=student_names)
+        print("Error:", e)
+        return jsonify({"message": "❌ Failed to take attendance"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=10000, debug=True)
