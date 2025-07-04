@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for
 import subprocess
 import gspread
 import os, json, base64
@@ -11,27 +11,17 @@ from googleapiclient.http import MediaFileUpload
 app = Flask(__name__)
 app.secret_key = 'secret_key'
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+# 🔥 Increase request size limit to 16MB (you can adjust this)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Google Sheets setup
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
 ]
-
-# ✅ Load credentials from env var or fallback to file
-def load_credentials():
-    creds_b64 = os.environ.get("GOOGLE_CREDS_B64")
-    if creds_b64:
-        creds_json = base64.b64decode(creds_b64).decode('utf-8')
-        creds_dict = json.loads(creds_json)
-        return Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-    elif os.path.exists("credentials.json"):
-        return Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
-    else:
-        raise Exception("Google credentials not found. Set 'GOOGLE_CREDS_B64' or provide 'credentials.json'.")
-
-credentials = load_credentials()
+creds_b64 = os.environ['GOOGLE_CREDS_B64']
+creds_json = base64.b64decode(creds_b64).decode('utf-8')
+credentials = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
 gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1j5cxov8g0jl4Ou6M2ehzcwA-MPBXO8pn85nHTCHFqAg')
 sheet = spreadsheet.worksheet("Attendance")
@@ -87,10 +77,14 @@ def run_attendance():
         return redirect('/')
     subprocess.Popen(["python", "chat.py", "--manual"])
     return render_template('dashboard.html', msg="Manual attendance started.")
-
+    
 def upload_to_drive(file_path, file_name, folder_id):
-    drive_service = build('drive', 'v3', credentials=credentials)
-    file_metadata = {'name': file_name, 'parents': [folder_id]}
+    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=creds)
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
     media = MediaFileUpload(file_path, mimetype='image/png')
 
     uploaded = drive_service.files().create(
@@ -98,6 +92,7 @@ def upload_to_drive(file_path, file_name, folder_id):
         media_body=media,
         fields='id'
     ).execute()
+
     return uploaded.get('id')
 
 @app.route('/add-student', methods=['GET', 'POST'])
@@ -146,7 +141,7 @@ def add_student():
         return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
 
     return render_template('add_student.html')
-
+    
 @app.route('/remove-student', methods=['GET', 'POST'])
 def remove_student():
     if 'user' not in session:
