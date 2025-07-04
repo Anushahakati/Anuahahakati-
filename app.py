@@ -11,7 +11,6 @@ from googleapiclient.http import MediaFileUpload
 app = Flask(__name__)
 app.secret_key = 'secret_key'
 
-# 🔥 Increase request size limit to 16MB (you can adjust this)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Google Sheets setup
@@ -40,7 +39,8 @@ def login():
 def dashboard():
     if 'user' not in session:
         return redirect('/')
-    return render_template('dashboard.html')
+    msg = request.args.get('msg')
+    return render_template('dashboard.html', msg=msg)
 
 @app.route('/view_data')
 def view_data():
@@ -54,7 +54,7 @@ def shortage():
     if 'user' not in session:
         return redirect('/')
     records = sheet.get_all_values()
-    headers = records[0][1:]  # Exclude 'Name'
+    headers = records[0][1:]
     result = []
     for row in records[1:]:
         present_count = row[1:].count('Present')
@@ -71,13 +71,16 @@ def absentees_today():
     absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
     return render_template('absentees.html', absentees=absentees, date=today)
 
-@app.route('/run_attendance')
-def run_attendance():
+@app.route('/take-attendance', methods=['POST'])
+def take_attendance():
     if 'user' not in session:
         return redirect('/')
-    subprocess.Popen(["python", "chat.py", "--manual"])
-    return render_template('dashboard.html', msg="Manual attendance started.")
-    
+    try:
+        subprocess.Popen(["python", "chat.py", "--manual"])
+        return redirect(url_for('dashboard', msg="✅ Attendance process started."))
+    except Exception as e:
+        return redirect(url_for('dashboard', msg=f"⚠️ Error: {e}"))
+
 def upload_to_drive(file_path, file_name, folder_id):
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
     drive_service = build('drive', 'v3', credentials=creds)
@@ -86,13 +89,11 @@ def upload_to_drive(file_path, file_name, folder_id):
         'parents': [folder_id]
     }
     media = MediaFileUpload(file_path, mimetype='image/png')
-
     uploaded = drive_service.files().create(
         body=file_metadata,
         media_body=media,
         fields='id'
     ).execute()
-
     return uploaded.get('id')
 
 @app.route('/add-student', methods=['GET', 'POST'])
@@ -138,10 +139,10 @@ def add_student():
             print("Google Sheet append error:", e)
             return "Sheet update failed", 500
 
-        return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
+        return redirect(url_for('dashboard', msg="✅ Student added and photo uploaded."))
 
     return render_template('add_student.html')
-    
+
 @app.route('/remove-student', methods=['GET', 'POST'])
 def remove_student():
     if 'user' not in session:
