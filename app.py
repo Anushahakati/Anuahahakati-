@@ -29,7 +29,7 @@ sheet = spreadsheet.worksheet("Attendance")
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == 'Bcca' and request.form['password'] == 'bcca':
+        if request.form['username'] == 'bcca' and request.form['password'] == 'bcca':
             session['user'] = 'admin'
             return redirect('/dashboard')
         else:
