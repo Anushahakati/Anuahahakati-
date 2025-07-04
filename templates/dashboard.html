@@ -71,7 +71,7 @@
       z-index: 1000;
     }
     .modal-content {
-      background: #fff;
+      background: #1e1e2a;
       padding: 20px;
       border-radius: 12px;
       text-align: center;
@@ -84,7 +84,7 @@
       position: relative;
     }
 
-    /* Face alignment matte box */
+    /* Face matte frame */
     .face-frame {
       position: absolute;
       top: 50%;
@@ -93,9 +93,10 @@
       height: 220px;
       transform: translate(-50%, -50%);
       border: 3px solid #00ffff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #00ffff;
+      border-radius: 12px;
+      box-shadow: 0 0 15px #00ffff;
       pointer-events: none;
+      z-index: 2;
     }
 
     .modal-buttons {
@@ -107,18 +108,18 @@
     .modal-buttons button {
       flex: 1;
       padding: 12px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 600;
       background-color: #45f3ff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
       color: #252432;
-      transition: all 0.3s;
     }
     .modal-buttons button:hover {
       background-color: #252432;
       color: #45f3ff;
-      box-shadow: 0 0 10px #45f3ff;
+      box-shadow: 0 0 8px #45f3ff;
     }
   </style>
 </head>
@@ -133,11 +134,11 @@
   <a href="{{ url_for('add_student') }}">Add Student</a>
   <a href="{{ url_for('remove_student') }}">Remove Student</a>
 
-  <!-- Button to open camera -->
+  <!-- Open Camera Button -->
   <button onclick="openCamera()">Take Attendance</button>
 </div>
 
-<!-- Optional: message shown from Flask backend -->
+<!-- Optional Flask Message -->
 {% if msg %}
   <p class="msg">{{ msg }}</p>
 {% endif %}
@@ -164,17 +165,21 @@
         document.getElementById('video').srcObject = stream;
       })
       .catch(err => {
-        alert("Camera error: " + err);
+        alert("Camera access failed: " + err.message);
       });
   }
 
   function closeCamera() {
-    document.getElementById('cameraModal').style.display = 'none';
-    const stream = document.getElementById('video').srcObject;
+    const modal = document.getElementById('cameraModal');
+    const video = document.getElementById('video');
+    const stream = video.srcObject;
+
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
-    document.getElementById('video').srcObject = null;
+
+    video.srcObject = null;
+    modal.style.display = 'none';
   }
 
   function capture() {
@@ -194,12 +199,12 @@
     })
     .then(res => res.json())
     .then(data => {
-      alert(data.message || "Attendance Taken");
+      alert(data.message || "✅ Attendance Taken");
       closeCamera();
       location.reload();
     })
     .catch(err => {
-      alert("Failed to take attendance");
+      alert("Something went wrong.");
       console.error(err);
     });
   }
