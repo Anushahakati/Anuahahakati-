@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import base64, os, json
-import cv2
 import numpy as np
 import gspread
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 from werkzeug.middleware.proxy_fix import ProxyFix
+from PIL import Image
+import io
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
@@ -73,10 +74,10 @@ def take_attendance():
         data = request.get_json()
         image_data = data['image'].split(',')[1]
         image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        image = Image.open(io.BytesIO(image_bytes))
+        image.save("captured.png")  # Optional: save image
 
-        # --- Dummy face recognition logic (replace with actual recognition) ---
+        # --- Dummy logic: Replace this with actual face recognition ---
         student_name = "Anu"
         roll_number = "73"
         now = datetime.now()
