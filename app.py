@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import subprocess
 import gspread
 import os, json, base64
@@ -71,15 +71,25 @@ def absentees_today():
     absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
     return render_template('absentees.html', absentees=absentees, date=today)
 
+# ✅ MODIFIED: Take Attendance with image capture
 @app.route('/take-attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
         return redirect('/')
+
     try:
-        subprocess.Popen(["python", "chat.py", "--manual"])
-        return redirect(url_for('dashboard', msg="✅ Attendance process started."))
+        data = request.get_json()
+        img_data = data['image'].split(',')[1]
+
+        os.makedirs("temp", exist_ok=True)
+        with open("temp/temp.png", "wb") as f:
+            f.write(base64.b64decode(img_data))
+
+        subprocess.run(["python", "chat.py", "--manual"])
+        return jsonify({"message": "✅ Attendance process completed."})
+
     except Exception as e:
-        return redirect(url_for('dashboard', msg=f"⚠️ Error: {e}"))
+        return jsonify({"message": f"⚠️ Error: {str(e)}"}), 500
 
 def upload_to_drive(file_path, file_name, folder_id):
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
