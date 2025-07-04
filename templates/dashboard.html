@@ -33,7 +33,7 @@
       width: 300px;
     }
     .action-buttons a,
-    .action-buttons form button {
+    .action-buttons button {
       text-decoration: none;
       padding: 15px;
       background-color: #45f3ff;
@@ -47,7 +47,7 @@
       font-size: 16px;
     }
     .action-buttons a:hover,
-    .action-buttons form button:hover {
+    .action-buttons button:hover {
       background-color: #252432;
       color: #45f3ff;
       box-shadow: 0 0 10px #45f3ff;
@@ -57,6 +57,29 @@
       color: #45f3ff;
       font-size: 16px;
       font-weight: 500;
+    }
+
+    #cameraModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #cameraModal .content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    #cameraModal video {
+      border-radius: 10px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -71,16 +94,66 @@
   <a href="{{ url_for('add_student') }}">Add Student</a>
   <a href="{{ url_for('remove_student') }}">Remove Student</a>
 
-  <!-- ✅ Take Attendance Button -->
-  <form action="{{ url_for('take_attendance') }}" method="POST">
-    <button type="submit">Take Attendance</button>
-  </form>
+  <!-- ✅ Take Attendance Camera Button -->
+  <button onclick="openCamera()">Take Attendance</button>
 </div>
 
-<!-- Optional: show message -->
+<!-- Optional: show success/failure message -->
 {% if msg %}
   <p class="msg">{{ msg }}</p>
 {% endif %}
+
+<!-- 📸 Camera Modal -->
+<div id="cameraModal">
+  <div class="content">
+    <video id="video" width="300" autoplay></video><br>
+    <button onclick="capture()">Capture</button>
+    <button onclick="closeCamera()">Cancel</button>
+  </div>
+</div>
+
+<script>
+function openCamera() {
+  document.getElementById('cameraModal').style.display = 'flex';
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      document.getElementById('video').srcObject = stream;
+    }).catch(err => alert("Camera error: " + err));
+}
+
+function closeCamera() {
+  document.getElementById('cameraModal').style.display = 'none';
+  const stream = document.getElementById('video').srcObject;
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+  document.getElementById('video').srcObject = null;
+}
+
+function capture() {
+  const video = document.getElementById('video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const image = canvas.toDataURL('image/png');
+
+  fetch('/take-attendance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image })
+  }).then(res => res.json())
+    .then(data => {
+      alert(data.message || "Attendance Taken");
+      closeCamera();
+      location.reload();
+    }).catch(err => {
+      alert("Failed to take attendance");
+      console.error(err);
+    });
+}
+</script>
 
 </body>
 </html>
