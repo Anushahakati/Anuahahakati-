@@ -2,19 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Taking Attendance</title>
+  <title>Take Attendance</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
-      background: #252432;
+      background-color: #000;
       color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      padding: 20px;
     }
+
     h2 {
       font-size: 28px;
       margin-bottom: 20px;
     }
+
+    video {
+      width: 300px;
+      height: 300px;
+      border: 4px solid #00f0ff;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #takeAttendanceBtn {
+      background-color: #00f0ff;
+      color: black;
+    }
+
+    #backBtn {
+      background-color: #444;
+      color: white;
+    }
+
     .loader {
       border: 6px solid #f3f3f3;
       border-top: 6px solid #45f3ff;
@@ -23,33 +53,75 @@
       height: 50px;
       animation: spin 1s linear infinite;
       margin: 20px auto;
+      display: none;
     }
+
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    p {
-      margin-top: 20px;
+
+    #status {
       font-size: 18px;
-    }
-    a {
-      color: #45f3ff;
-      text-decoration: none;
-      display: inline-block;
-      margin-top: 30px;
-      font-size: 18px;
-    }
-    a:hover {
-      text-decoration: underline;
+      margin-top: 15px;
+      display: none;
     }
   </style>
 </head>
 <body>
 
-<h2>Taking Attendance...</h2>
-<div class="loader"></div>
-<p>Please wait while the system records attendance using facial recognition.</p>
-<a href="/dashboard">Back to Dashboard</a>
+  <h2>Take Attendance</h2>
+  <video id="video" autoplay playsinline></video><br>
 
+  <button id="takeAttendanceBtn">Take Attendance</button>
+  <button id="backBtn" onclick="location.href='/dashboard'">Back to Dashboard</button>
+
+  <div class="loader" id="loader"></div>
+  <p id="status">Please wait while attendance is being recorded...</p>
+
+  <script>
+    const video = document.getElementById('video');
+    const loader = document.getElementById('loader');
+    const statusText = document.getElementById('status');
+    const takeAttendanceBtn = document.getElementById('takeAttendanceBtn');
+
+    // Ask for camera access
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        video.srcObject = stream;
+      })
+      .catch((err) => {
+        alert('Camera access failed: ' + err.message);
+      });
+
+    takeAttendanceBtn.addEventListener('click', () => {
+      loader.style.display = 'block';
+      statusText.style.display = 'block';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL('image/jpeg');
+
+      fetch('/take_attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+      })
+      .then(response => response.json())
+      .then(data => {
+        loader.style.display = 'none';
+        statusText.style.display = 'none';
+        alert(data.message || 'Attendance taken');
+      })
+      .catch(err => {
+        loader.style.display = 'none';
+        statusText.style.display = 'none';
+        alert('Failed to take attendance');
+      });
+    });
+  </script>
 </body>
 </html>
