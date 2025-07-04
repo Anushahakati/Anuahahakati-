@@ -1,6 +1,6 @@
 Flask==2.3.3
 gunicorn==21.2.0
-numpy==1.24.4
+numpy==1.24.4 --only-binary=:all:
 gspread==5.12.0
 google-auth==2.29.0
 google-auth-oauthlib==1.2.0
@@ -10,3 +10,4 @@ google-api-python-client==2.75.0
 Pillow==10.2.0
 setuptools==68.2.2
 wheel==0.42.0
+setuptools>=65
