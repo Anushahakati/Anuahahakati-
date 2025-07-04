@@ -29,7 +29,7 @@ sheet = spreadsheet.worksheet("Attendance")
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == 'bcca' and request.form['password'] == 'bcca':
+        if request.form['username'] == 'Bcca' and request.form['password'] == 'Bcca':
             session['user'] = 'admin'
             return redirect('/dashboard')
         else:
@@ -111,13 +111,13 @@ def add_student():
 
                 filename = f"{name}.png"
                 os.makedirs("data", exist_ok=True)
-                local_path = os.path.join("data", filename)
+                local_path = os.path.join("attendance_photos", filename)
                 with open(local_path, "wb") as f:
                     f.write(image_bytes)
 
                 if os.path.exists("SmartAttendanceWeb"):
-                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
-                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
+                    os.makedirs(os.path.join("SmartAttendanceWeb", "attendance_photos"), exist_ok=True)
+                    git_path = os.path.join("SmartAttendanceWeb", "attendance_photos", filename)
                     with open(git_path, "wb") as f:
                         f.write(image_bytes)
 
