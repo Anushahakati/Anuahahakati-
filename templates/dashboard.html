@@ -59,27 +59,66 @@
       font-weight: 500;
     }
 
+    /* Camera Modal */
     #cameraModal {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      align-items: center;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
       justify-content: center;
+      align-items: center;
       z-index: 1000;
     }
-    #cameraModal .content {
-      background: white;
+    .modal-content {
+      background: #fff;
       padding: 20px;
-      border-radius: 10px;
+      border-radius: 12px;
       text-align: center;
+      position: relative;
     }
-    #cameraModal video {
+    video {
+      width: 100%;
+      max-width: 400px;
       border-radius: 10px;
-      margin-bottom: 10px;
+      position: relative;
+    }
+
+    /* Face alignment matte box */
+    .face-frame {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 220px;
+      height: 220px;
+      transform: translate(-50%, -50%);
+      border: 3px solid #00ffff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ffff;
+      pointer-events: none;
+    }
+
+    .modal-buttons {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .modal-buttons button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      background-color: #45f3ff;
+      color: #252432;
+      transition: all 0.3s;
+    }
+    .modal-buttons button:hover {
+      background-color: #252432;
+      color: #45f3ff;
+      box-shadow: 0 0 10px #45f3ff;
     }
   </style>
 </head>
@@ -94,65 +133,76 @@
   <a href="{{ url_for('add_student') }}">Add Student</a>
   <a href="{{ url_for('remove_student') }}">Remove Student</a>
 
-  <!-- ✅ Take Attendance Camera Button -->
+  <!-- Button to open camera -->
   <button onclick="openCamera()">Take Attendance</button>
 </div>
 
-<!-- Optional: show success/failure message -->
+<!-- Optional: message shown from Flask backend -->
 {% if msg %}
   <p class="msg">{{ msg }}</p>
 {% endif %}
 
-<!-- 📸 Camera Modal -->
+<!-- Camera Modal -->
 <div id="cameraModal">
-  <div class="content">
-    <video id="video" width="300" autoplay></video><br>
-    <button onclick="capture()">Capture</button>
-    <button onclick="closeCamera()">Cancel</button>
+  <div class="modal-content">
+    <div style="position: relative; display: inline-block;">
+      <video id="video" autoplay></video>
+      <div class="face-frame"></div>
+    </div>
+    <div class="modal-buttons">
+      <button onclick="capture()">Capture & Save</button>
+      <button onclick="closeCamera()">Back to Dashboard</button>
+    </div>
   </div>
 </div>
 
 <script>
-function openCamera() {
-  document.getElementById('cameraModal').style.display = 'flex';
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-      document.getElementById('video').srcObject = stream;
-    }).catch(err => alert("Camera error: " + err));
-}
-
-function closeCamera() {
-  document.getElementById('cameraModal').style.display = 'none';
-  const stream = document.getElementById('video').srcObject;
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
+  function openCamera() {
+    document.getElementById('cameraModal').style.display = 'flex';
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        document.getElementById('video').srcObject = stream;
+      })
+      .catch(err => {
+        alert("Camera error: " + err);
+      });
   }
-  document.getElementById('video').srcObject = null;
-}
 
-function capture() {
-  const video = document.getElementById('video');
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
-  const image = canvas.toDataURL('image/png');
+  function closeCamera() {
+    document.getElementById('cameraModal').style.display = 'none';
+    const stream = document.getElementById('video').srcObject;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    document.getElementById('video').srcObject = null;
+  }
 
-  fetch('/take-attendance', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image })
-  }).then(res => res.json())
+  function capture() {
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const image = canvas.toDataURL('image/png');
+
+    fetch('/take-attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image })
+    })
+    .then(res => res.json())
     .then(data => {
       alert(data.message || "Attendance Taken");
       closeCamera();
       location.reload();
-    }).catch(err => {
+    })
+    .catch(err => {
       alert("Failed to take attendance");
       console.error(err);
     });
-}
+  }
 </script>
 
 </body>
