@@ -131,8 +131,13 @@
   <a href="{{ url_for('add_student') }}">Add Student</a>
   <a href="{{ url_for('remove_student') }}">Remove Student</a>
 
-  <!-- New Button that opens camera modal -->
+  <!-- Existing Modal-based Camera -->
   <button onclick="openCamera()">Take Attendance</button>
+
+  <!-- New Redirect Button to take_attendance_page -->
+  <a href="/take-attendance-page">
+    <button>Take Attendance (Redirect)</button>
+  </a>
 </div>
 
 {% if msg %}
