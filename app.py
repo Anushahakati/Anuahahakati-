@@ -69,7 +69,7 @@ def take_attendance():
         print("Error:", e)
         return jsonify({"message": f"❌ Error: {str(e)}"}), 500
 
-# ✅ Add all missing routes below
+# ✅ Additional Routes
 @app.route('/view-data')
 def view_data():
     return render_template('view_data.html')
@@ -77,6 +77,10 @@ def view_data():
 @app.route('/shortage')
 def shortage():
     return render_template('shortage.html')
+
+@app.route('/absentees_today')
+def absentees_today():
+    return render_template('absentees_today.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=True)
