@@ -20,29 +20,34 @@
       align-items: center;
       min-height: 100vh;
       background: #252432;
+      color: #45f3ff;
+      padding-top: 80px;
     }
 
     .page-title {
-      color: white;
-      font-size: 24px;
-      margin-top: 30px;
+      font-size: 28px;
+      margin-bottom: 20px;
     }
 
     .form-container {
-      margin-top: 30px;
+      background: #2d2d39;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(69, 243, 255, 0.2);
     }
 
     select, button {
       padding: 12px;
-      width: 250px;
+      width: 260px;
       margin: 10px 0;
       border-radius: 8px;
       border: none;
       outline: none;
+      font-size: 16px;
     }
 
     select {
-      background: #2d2d39;
+      background: #1c1c27;
       color: white;
       border: 1px solid #45f3ff;
     }
@@ -52,6 +57,7 @@
       color: #252432;
       font-weight: bold;
       cursor: pointer;
+      transition: 0.3s ease;
     }
 
     button:hover {
@@ -60,10 +66,10 @@
       box-shadow: 0 0 10px #45f3ff;
     }
 
-    a {
+    a.back-link {
       display: inline-block;
-      margin-top: 20px;
-      padding: 10px 16px;
+      margin-top: 25px;
+      padding: 10px 18px;
       background: #45f3ff;
       color: #252432;
       text-decoration: none;
@@ -72,10 +78,14 @@
       transition: 0.3s ease;
     }
 
-    a:hover {
+    a.back-link:hover {
       background: #252432;
       color: #45f3ff;
       box-shadow: 0 0 10px #45f3ff;
+    }
+
+    i {
+      margin-right: 8px;
     }
   </style>
 </head>
@@ -90,10 +100,10 @@
           <option value="{{ student }}">{{ student }}</option>
         {% endfor %}
       </select><br>
-      <button type="submit">Delete Student</button>
+      <button type="submit"><i class="fas fa-trash"></i> Delete Student</button>
     </form>
 
-    <a href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <a href="{{ url_for('dashboard') }}" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
   </div>
 
 </body>
