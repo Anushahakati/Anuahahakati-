@@ -24,39 +24,77 @@
 
     .page-title {
       color: white;
-      font-size: 24px;
-      margin-top: 30px;
+      font-size: 28px;
+      margin-top: 40px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
     }
 
     .container {
       margin-top: 30px;
-      width: 80%;
+      width: 90%;
+      max-width: 1000px;
       text-align: center;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
+      border-radius: 8px;
+      overflow: hidden;
     }
 
     th, td {
-      padding: 12px;
-      border: 1px solid white;
+      padding: 14px;
+      border: 1px solid #45f3ff;
       color: white;
     }
 
     th {
       background: #45f3ff;
       color: #252432;
+      text-transform: uppercase;
+      font-size: 16px;
     }
 
     td {
       background: #2d2d39;
+      font-size: 15px;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #1e1e2a;
+    }
+
+    header {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 20px;
+      color: #45f3ff;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+      th, td {
+        font-size: 13px;
+        padding: 10px;
+      }
+
+      .page-title {
+        font-size: 22px;
+      }
+
+      header {
+        font-size: 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <header>Students with Attendance Shortage</header>
+
+  <h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Attendance Shortage</h1>
+
   <div class="container">
     <table>
       <thead>
@@ -77,5 +115,6 @@
       </tbody>
     </table>
   </div>
+
 </body>
 </html>
