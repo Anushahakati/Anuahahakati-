@@ -24,14 +24,13 @@
 
     .page-title {
       color: white;
-      font-size: 28px;
+      font-size: 24px;
       margin-top: 30px;
     }
 
     .container {
       margin-top: 30px;
-      width: 90%;
-      max-width: 1000px;
+      width: 80%;
       text-align: center;
     }
 
@@ -56,35 +55,19 @@
       background: #2d2d39;
     }
 
-    .no-data {
-      color: #ff4c4c;
-      font-size: 18px;
-      margin-top: 20px;
-    }
-
-    .actions {
-      margin-top: 40px;
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .actions a, .actions button {
+    a {
+      display: inline-block;
+      margin-top: 30px;
       padding: 12px 20px;
-      font-size: 16px;
       background: #45f3ff;
       color: #252432;
       text-decoration: none;
       font-weight: bold;
       border-radius: 8px;
-      border: none;
-      cursor: pointer;
       transition: 0.3s ease;
     }
 
-    .actions a:hover,
-    .actions button:hover {
+    a:hover {
       background: #252432;
       color: #45f3ff;
       box-shadow: 0 0 10px #45f3ff;
@@ -93,41 +76,33 @@
 </head>
 <body>
 
-  <h1 class="page-title"><i class="fas fa-clipboard-list"></i> Attendance Sheet</h1>
+  <h1 class="page-title">Attendance Sheet</h1>
 
   <div class="container">
-    {% if records %}
-      <table>
+    <table>
+      {% if records %}
         <thead>
           <tr>
             {% for header in records[0] %}
-              {% if loop.index == 1 or header[:4]|int(default=0) >= 2020 %}
-                <th>{{ header }}</th>
-              {% endif %}
+              <th>{{ header }}</th>
             {% endfor %}
           </tr>
         </thead>
         <tbody>
           {% for row in records[1:] %}
-            {% if row[0]|string and '-' in row[0] %}
-              <tr>
-                {% for cell in row %}
-                  <td>{{ cell }}</td>
-                {% endfor %}
-              </tr>
-            {% endif %}
+            <tr>
+              {% for cell in row %}
+                <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
           {% endfor %}
         </tbody>
-      </table>
-    {% else %}
-      <p class="no-data"><i class="fas fa-exclamation-circle"></i> No attendance records found.</p>
-    {% endif %}
+      {% else %}
+        <tr><td colspan="100%">No records found.</td></tr>
+      {% endif %}
+    </table>
 
-    <div class="actions">
-      <a href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-      <button onclick="window.print()"><i class="fas fa-print"></i> Print Sheet</button>
-      <a href="/download-sheet"><i class="fas fa-download"></i> Download Excel</a>
-    </div>
+    <a href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
   </div>
 
 </body>
