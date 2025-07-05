@@ -16,23 +16,29 @@ def remove_student():
     except FileNotFoundError:
         messagebox.showerror("Error", f"No image found for {selected_name}.")
 
-# GUI Setup
+# === GUI Setup ===
 root = tk.Tk()
 root.title("Remove Student")
+root.geometry("400x300")
+root.resizable(False, False)
 
-label = tk.Label(root, text="Select a student to remove:")
+label = tk.Label(root, text="Select a student to remove:", font=("Arial", 12))
 label.pack(pady=10)
 
-listbox = tk.Listbox(root, width=40)
-listbox.pack(padx=10, pady=10)
+listbox = tk.Listbox(root, width=40, font=("Courier", 11))
+listbox.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-# Load names from data/ folder
+# === Load student names from 'data/' folder ===
 data_folder = "data"
-student_names = [f[:-4] for f in os.listdir(data_folder) if f.endswith(".png")]
-for name in student_names:
+if not os.path.exists(data_folder):
+    os.makedirs(data_folder)
+
+student_names = [f[:-4] for f in os.listdir(data_folder) if f.lower().endswith(".png")]
+for name in sorted(student_names):
     listbox.insert(tk.END, name)
 
-remove_button = tk.Button(root, text="Remove", command=remove_student)
+remove_button = tk.Button(root, text="Remove", command=remove_student, bg="#ff5555", fg="white", font=("Arial", 10, "bold"))
 remove_button.pack(pady=10)
 
+# Run the application
 root.mainloop()
