@@ -100,19 +100,22 @@
       <table>
         <thead>
           <tr>
-            <th>Name-Rollno</th>
-            {% for date in records[0][1:] %}
-              <th>{{ date }}</th>
+            {% for header in records[0] %}
+              {% if loop.index == 1 or header[:4]|int(default=0) >= 2020 %}
+                <th>{{ header }}</th>
+              {% endif %}
             {% endfor %}
           </tr>
         </thead>
         <tbody>
           {% for row in records[1:] %}
-            <tr>
-              {% for cell in row %}
-                <td>{{ cell }}</td>
-              {% endfor %}
-            </tr>
+            {% if row[0]|string and '-' in row[0] %}
+              <tr>
+                {% for cell in row %}
+                  <td>{{ cell }}</td>
+                {% endfor %}
+              </tr>
+            {% endif %}
           {% endfor %}
         </tbody>
       </table>
