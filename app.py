@@ -19,6 +19,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
 ]
+
 creds_b64 = os.environ.get('GOOGLE_CREDS_B64')
 creds_json = base64.b64decode(creds_b64).decode('utf-8')
 credentials = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
@@ -69,7 +70,6 @@ def take_attendance():
         print("Error:", e)
         return jsonify({"message": f"❌ Error: {str(e)}"}), 500
 
-# === Additional Routes ===
 @app.route('/view-data')
 def view_data():
     return render_template('view_data.html')
@@ -85,6 +85,21 @@ def absentees_today():
 @app.route('/add-student')
 def add_student():
     return render_template('add_student.html')
+
+@app.route('/remove-student', methods=['GET', 'POST'])
+def remove_student():
+    students = sheet.col_values(3)[1:]  # assuming column 3 has student names, skip header
+    if request.method == 'POST':
+        name_to_remove = request.form.get('name')
+        all_data = sheet.get_all_values()
+
+        for i, row in enumerate(all_data):
+            if len(row) >= 3 and row[2] == name_to_remove:
+                sheet.delete_rows(i + 1)
+                break
+        return render_template('remove_student.html', students=sheet.col_values(3)[1:], msg=f"{name_to_remove} removed.")
+
+    return render_template('remove_student.html', students=students)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=True)
