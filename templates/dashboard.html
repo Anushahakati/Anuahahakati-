@@ -124,7 +124,7 @@
   <a href="{{ url_for('view_data') }}"><i class="fas fa-table"></i> View Attendance Data</a>
   <a href="{{ url_for('shortage') }}"><i class="fas fa-user-clock"></i> Attendance Shortage</a>
   <a href="{{ url_for('absentees_today') }}"><i class="fas fa-user-times"></i> Today's Absentees</a>
-  <a href="#" onclick="alert('🚧 Add Student feature coming soon!')"><i class="fas fa-user-plus"></i> Add Student</a>
+  <a href="{{ url_for('add_student') }}"><i class="fas fa-user-plus"></i> Add Student</a>
   <a href="{{ url_for('remove_student') }}"><i class="fas fa-user-minus"></i> Remove Student</a>
 
   <button onclick="openCamera()"><i class="fas fa-camera"></i> Take Attendance</button>
