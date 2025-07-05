@@ -129,12 +129,12 @@
       letter-spacing: 0.2em;
       font-weight: 600;
     }
-    
+
     .loginBx form {
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 15px; /* <-- Added gap between form inputs */
+      gap: 15px;
     }
 
     .loginBx input {
@@ -174,6 +174,7 @@
     .group a {
       color: #fff;
       text-decoration: none;
+      font-size: 0.9em;
     }
 
     .group a:nth-child(2) {
@@ -194,18 +195,18 @@
 <div class="box">
   <div class="login">
     <div class="loginBx">
-      <h2>Login</h2>
+      <h2><i class="fas fa-lock"></i> Login</h2>
       <form method="POST" action="/">
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>
         <input type="submit" value="Sign in" />
       </form>
       {% if error %}
-      <p class="error">{{ error }}</p>
+        <p class="error">{{ error }}</p>
       {% endif %}
       <div class="group">
-        <a href="#">Forgot Password</a>
-        <a href="#">Sign up</a>
+        <a href="#"><i class="fas fa-key"></i> Forgot Password</a>
+        <a href="#"><i class="fas fa-user-plus"></i> Sign up</a>
       </div>
     </div>
   </div>
