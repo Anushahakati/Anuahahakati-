@@ -83,7 +83,6 @@
       border-radius: 10px;
       position: relative;
     }
-
     .face-frame {
       position: absolute;
       top: 50%;
@@ -97,11 +96,9 @@
       pointer-events: none;
       z-index: 2;
     }
-
     .modal-buttons {
       margin-top: 15px;
     }
-
     .modal-buttons button {
       padding: 12px 20px;
       font-size: 15px;
@@ -112,7 +109,6 @@
       cursor: pointer;
       color: #252432;
     }
-
     .modal-buttons button:hover {
       background-color: #252432;
       color: #45f3ff;
@@ -125,18 +121,16 @@
 <h1>Admin Dashboard</h1>
 
 <div class="action-buttons">
-  <a href="{{ url_for('view_data') }}">View Attendance Data</a>
-  <a href="{{ url_for('shortage') }}">Attendance Shortage</a>
-  <a href="{{ url_for('absentees_today') }}">Today's Absentees</a>
-  <a href="#" onclick="alert('🚧 Add Student feature coming soon!')">Add Student</a>
-  <a href="{{ url_for('remove_student') }}">Remove Student</a>
+  <a href="{{ url_for('view_data') }}"><i class="fas fa-table"></i> View Attendance Data</a>
+  <a href="{{ url_for('shortage') }}"><i class="fas fa-user-clock"></i> Attendance Shortage</a>
+  <a href="{{ url_for('absentees_today') }}"><i class="fas fa-user-times"></i> Today's Absentees</a>
+  <a href="#" onclick="alert('🚧 Add Student feature coming soon!')"><i class="fas fa-user-plus"></i> Add Student</a>
+  <a href="{{ url_for('remove_student') }}"><i class="fas fa-user-minus"></i> Remove Student</a>
 
-  <!-- Existing Modal-based Camera -->
-  <button onclick="openCamera()">Take Attendance</button>
+  <button onclick="openCamera()"><i class="fas fa-camera"></i> Take Attendance</button>
 
-  <!-- New Redirect Button to take_attendance_page -->
-  <a href="/take-attendance-page">
-    <button>Take Attendance (Redirect)</button>
+  <a href="{{ url_for('take_attendance_page') }}">
+    <button><i class="fas fa-sign-in-alt"></i> Take Attendance (Redirect)</button>
   </a>
 </div>
 
