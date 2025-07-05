@@ -24,7 +24,7 @@ SERVICE_ACCOUNT_FILE = r"C:/Users/anush/Downloads/Minee/credentials.json"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 credentials = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 gc = gspread.authorize(credentials)
-SPREADSHEET_ID = "1j5cxov8g0jl4Ou6M2ehzcwA-MPBXO8pn85nHTCHFqAg"
+SPREADSHEET_ID = "1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs"
 spreadsheet = gc.open_by_key(SPREADSHEET_ID)
 
 # Excel File Path
