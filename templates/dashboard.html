@@ -126,12 +126,7 @@
   <a href="{{ url_for('absentees_today') }}"><i class="fas fa-user-times"></i> Today's Absentees</a>
   <a href="{{ url_for('add_student') }}"><i class="fas fa-user-plus"></i> Add Student</a>
   <a href="{{ url_for('remove_student') }}"><i class="fas fa-user-minus"></i> Remove Student</a>
-
   <button onclick="openCamera()"><i class="fas fa-camera"></i> Take Attendance</button>
-
-  <a href="{{ url_for('take_attendance_page') }}">
-    <button><i class="fas fa-sign-in-alt"></i> Take Attendance (Redirect)</button>
-  </a>
 </div>
 
 {% if msg %}
