@@ -4,25 +4,34 @@
   <meta charset="UTF-8">
   <title>Take Attendance</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
     body {
-      background-color: #000;
+      background: #252432;
       color: white;
       text-align: center;
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      padding: 40px;
     }
 
     h2 {
       font-size: 28px;
       margin-bottom: 20px;
+      color: #45f3ff;
     }
 
     video {
-      width: 300px;
-      height: 300px;
-      border: 4px solid #00f0ff;
+      width: 320px;
+      height: 240px;
+      border: 4px solid #45f3ff;
       border-radius: 10px;
-      margin-top: 30px;
+      margin-top: 20px;
     }
 
     button {
@@ -33,16 +42,28 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      transition: 0.3s ease;
     }
 
     #takeAttendanceBtn {
-      background-color: #00f0ff;
-      color: black;
+      background-color: #45f3ff;
+      color: #252432;
+      font-weight: bold;
+    }
+
+    #takeAttendanceBtn:hover {
+      background-color: #252432;
+      color: #45f3ff;
+      box-shadow: 0 0 10px #45f3ff;
     }
 
     #backBtn {
       background-color: #444;
       color: white;
+    }
+
+    #backBtn:hover {
+      background-color: #333;
     }
 
     .loader {
@@ -66,11 +87,23 @@
       margin-top: 15px;
       display: none;
     }
+
+    a {
+      color: #45f3ff;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 30px;
+      font-size: 18px;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
 
-  <h2>Take Attendance</h2>
+  <h2>Taking Attendance</h2>
   <video id="video" autoplay playsinline></video><br>
 
   <button id="takeAttendanceBtn">Take Attendance</button>
@@ -85,7 +118,7 @@
     const statusText = document.getElementById('status');
     const takeAttendanceBtn = document.getElementById('takeAttendanceBtn');
 
-    // Ask for camera access
+    // Initialize webcam stream
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         video.srcObject = stream;
@@ -94,6 +127,7 @@
         alert('Camera access failed: ' + err.message);
       });
 
+    // Handle Attendance Button
     takeAttendanceBtn.addEventListener('click', () => {
       loader.style.display = 'block';
       statusText.style.display = 'block';
@@ -101,7 +135,8 @@
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0);
 
       const imageData = canvas.toDataURL('image/jpeg');
 
@@ -114,12 +149,12 @@
       .then(data => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
-        alert(data.message || 'Attendance taken');
+        alert(data.message || 'Attendance recorded successfully!');
       })
       .catch(err => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
-        alert('Failed to take attendance');
+        alert('Failed to take attendance. Please try again.');
       });
     });
   </script>
