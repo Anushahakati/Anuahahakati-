@@ -97,24 +97,25 @@
 
   <div class="container">
     {% if records %}
-    <table>
-      <thead>
-        <tr>
-          {% for header in records[0] %}
-            <th>{{ header }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in records[1:] %}
+      <table>
+        <thead>
           <tr>
-            {% for cell in row %}
-              <td>{{ cell }}</td>
+            <th>Name-Rollno</th>
+            {% for date in records[0][1:] %}
+              <th>{{ date }}</th>
             {% endfor %}
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for row in records[1:] %}
+            <tr>
+              {% for cell in row %}
+                <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     {% else %}
       <p class="no-data"><i class="fas fa-exclamation-circle"></i> No attendance records found.</p>
     {% endif %}
