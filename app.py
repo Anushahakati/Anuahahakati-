@@ -47,12 +47,6 @@ def dashboard():
         return redirect('/')
     return render_template('dashboard.html')
 
-@app.route('/take-attendance-page')
-def take_attendance_page():
-    if 'user' not in session:
-        return redirect('/')
-    return render_template('take_attendance.html')
-
 @app.route('/take_attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
