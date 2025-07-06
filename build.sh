@@ -14,3 +14,5 @@ apt-get update && apt-get install -y \
 
 pip install --upgrade pip
 pip install -r requirements.txt
+pip install --upgrade pip wheel
+pip install dlib==19.22.0 --only-binary :all:
