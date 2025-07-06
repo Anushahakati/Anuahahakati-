@@ -11,4 +11,3 @@ setuptools==68.2.2
 wheel==0.42.0
 opencv-python-headless==4.9.0.80
 opencv-contrib-python==4.8.0.74
-
