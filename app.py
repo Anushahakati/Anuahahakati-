@@ -9,7 +9,6 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import numpy as np
 import cv2
-import face_recognition
 from io import BytesIO
 from PIL import Image
 from openpyxl import load_workbook, Workbook
@@ -31,24 +30,30 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
-# === Known Faces Loading ===
-image_paths = {
-    "Anusha-80": "data/anusha80.png",
-    "Sahana-144": "data/sahana144.png",
-    "Anusha-73": "data/anusha73.png",
-}
+# === Known Faces Setup (using OpenCV LBPH) ===
+recognizer = cv2.face.LBPHFaceRecognizer_create()
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-known_face_encodings = []
-known_face_names = []
+data_dir = "data"
+label_map = {}
+x_train, y_labels = [], []
+label_id = 0
 
-for name, path in image_paths.items():
-    try:
-        image = face_recognition.load_image_file(path)
-        encoding = face_recognition.face_encodings(image)[0]
-        known_face_encodings.append(encoding)
-        known_face_names.append(name)
-    except Exception as e:
-        print(f"Failed loading {name}: {e}")
+for filename in os.listdir(data_dir):
+    if filename.endswith(".png") or filename.endswith(".jpg"):
+        path = os.path.join(data_dir, filename)
+        label = filename.rsplit(".", 1)[0]
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        faces = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5)
+        for (x, y, w, h) in faces:
+            roi = img[y:y + h, x:x + w]
+            x_train.append(roi)
+            y_labels.append(label_id)
+        label_map[label_id] = label
+        label_id += 1
+
+if x_train:
+    recognizer.train(x_train, np.array(y_labels))
 
 # === Attendance Helper ===
 def update_google_sheet(sheet, date_header, name):
@@ -106,11 +111,9 @@ def update_excel(date_header, name):
     except Exception as e:
         print("Excel update error:", e)
 
-# === Routes ===
-
 @app.route('/')
 def home():
-    return "Hello from Flask + Face Recognition!"
+    return "Hello from Flask + OpenCV!"
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -135,27 +138,22 @@ def take_attendance():
         data = request.get_json()
         image_data = data['image'].split(',')[1]
         img_bytes = base64.b64decode(image_data)
-        img = Image.open(BytesIO(img_bytes))
+        img = Image.open(BytesIO(img_bytes)).convert('L')
         frame = np.array(img)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_locations = face_recognition.face_locations(rgb_frame)
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        faces = face_cascade.detectMultiScale(frame, scaleFactor=1.1, minNeighbors=5)
 
         recognized_names = set()
-        for encoding in face_encodings:
-            distances = face_recognition.face_distance(known_face_encodings, encoding)
-            best_match = np.argmin(distances)
-            if distances[best_match] < 0.6:
-                recognized_names.add(known_face_names[best_match])
+        for (x, y, w, h) in faces:
+            roi = frame[y:y + h, x:x + w]
+            label_id_pred, confidence = recognizer.predict(roi)
+            if confidence < 70:
+                recognized_names.add(label_map[label_id_pred])
 
         if recognized_names:
             date_header = datetime.now().strftime("%Y-%m-%d")
             for name in recognized_names:
                 update_google_sheet(sheet, date_header, name)
                 update_excel(date_header, name)
-
             return jsonify({"message": f"✅ Attendance taken for: {', '.join(recognized_names)}"})
         return jsonify({"message": "❌ No known faces recognized!"})
     except Exception as e:
@@ -188,13 +186,6 @@ def absentees_today():
     records = sheet.get_all_records()
     absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
     return render_template('absentees.html', absentees=absentees, date=today)
-
-@app.route('/run_attendance')
-def run_attendance():
-    if 'user' not in session:
-        return redirect('/')
-    subprocess.Popen(["python", "chat.py", "--manual"])
-    return render_template('dashboard.html', msg="Manual attendance started.")
 
 @app.route('/add-student', methods=['GET', 'POST'])
 def add_student():
