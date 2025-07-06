@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Glowing Animated Login Form</title>
+  <title>Face Detection Upload</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
@@ -31,7 +31,7 @@
     .box {
       position: relative;
       width: 400px;
-      height: 200px;
+      height: 300px;
       background: repeating-conic-gradient(
         from var(--a),
         #ff2770 0%,
@@ -51,7 +51,7 @@
 
     .box:hover {
       width: 450px;
-      height: 500px;
+      height: 580px;
     }
 
     @keyframes rotating {
@@ -87,7 +87,7 @@
       border: 8px solid #25252b;
     }
 
-    .login {
+    .upload {
       position: absolute;
       inset: 60px;
       display: flex;
@@ -104,110 +104,89 @@
       overflow: hidden;
     }
 
-    .box:hover .login {
+    .box:hover .upload {
       inset: 40px;
     }
 
-    .loginBx {
+    .uploadBx {
       position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
       flex-direction: column;
-      transform: translateY(126px);
+      transform: translateY(100px);
       gap: 20px;
-      width: 70%;
+      width: 80%;
       transition: 0.5s;
     }
 
-    .box:hover .loginBx {
+    .box:hover .uploadBx {
       transform: translateY(0px);
     }
 
-    .loginBx h2 {
+    .uploadBx h2 {
       text-transform: uppercase;
       letter-spacing: 0.2em;
       font-weight: 600;
+      text-align: center;
     }
 
-    .loginBx form {
+    .uploadBx form {
       width: 100%;
       display: flex;
       flex-direction: column;
       gap: 15px;
     }
 
-    .loginBx input {
-      width: 100%;
-      padding: 10px 20px;
-      outline: none;
-      font-size: 1em;
+    .uploadBx input[type="file"] {
+      padding: 10px;
+      border-radius: 20px;
+      border: 2px solid #45f3ff;
+      background: transparent;
       color: #fff;
-      background: rgba(0, 0, 0, 0.1);
-      border: 2px solid #fff;
-      border-radius: 30px;
+      cursor: pointer;
     }
 
-    .loginBx input::placeholder {
-      color: #999;
-    }
-
-    .loginBx input[type="submit"] {
+    .uploadBx input[type="submit"] {
       background: #45f3ff;
       border: none;
       font-weight: 500;
       color: #111;
+      padding: 10px;
+      border-radius: 30px;
       cursor: pointer;
       transition: 0.5s;
     }
 
-    .loginBx input[type="submit"]:hover {
+    .uploadBx input[type="submit"]:hover {
       box-shadow: 0 0 10px #45f3ff, 0 0 60px #45f3ff;
     }
 
-    .group {
-      display: flex;
+    .result-preview img {
+      margin-top: 20px;
+      border: 3px solid #45f3ff;
+      border-radius: 10px;
       width: 100%;
-      justify-content: space-between;
     }
 
-    .group a {
-      color: #fff;
-      text-decoration: none;
-      font-size: 0.9em;
-    }
-
-    .group a:nth-child(2) {
-      color: #ff2770;
-      font-weight: 600;
-    }
-
-    .error {
-      color: red;
-      font-size: 0.9em;
-      margin-top: 10px;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
 
 <div class="box">
-  <div class="login">
-    <div class="loginBx">
-      <h2><i class="fas fa-lock"></i> Login</h2>
-      <form method="POST" action="/">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <input type="submit" value="Sign in" />
+  <div class="upload">
+    <div class="uploadBx">
+      <h2><i class="fas fa-image"></i> Upload for Face Detection</h2>
+      <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <input type="submit" value="Upload & Detect">
       </form>
-      {% if error %}
-        <p class="error">{{ error }}</p>
-      {% endif %}
-      <div class="group">
-        <a href="#"><i class="fas fa-key"></i> Forgot Password</a>
-        <a href="#"><i class="fas fa-user-plus"></i> Sign up</a>
+      {% if result_img %}
+      <div class="result-preview">
+        <h3 style="text-align:center">Detected Faces:</h3>
+        <img src="{{ url_for('static', filename='uploads/' + result_img.split('/')[-1]) }}">
       </div>
+      {% endif %}
     </div>
   </div>
 </div>
