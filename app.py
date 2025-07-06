@@ -107,7 +107,12 @@ def update_excel(date_header, name):
         print("Excel update error:", e)
 
 # === Routes ===
-@app.route('/', methods=['GET', 'POST'])
+
+@app.route('/')
+def home():
+    return "Hello from Flask + Face Recognition!"
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         if request.form['username'] == 'bcca' and request.form['password'] == 'bcca':
