@@ -118,27 +118,49 @@
     const statusText = document.getElementById('status');
     const takeAttendanceBtn = document.getElementById('takeAttendanceBtn');
 
+    let cameraReady = false;
+
     // Initialize webcam stream
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         video.srcObject = stream;
+        cameraReady = true;
       })
       .catch((err) => {
-        alert('Camera access failed: ' + err.message);
+        alert('❌ Camera access failed: ' + err.message);
       });
 
     // Handle Attendance Button
     takeAttendanceBtn.addEventListener('click', () => {
+      if (!cameraReady) {
+        alert("❌ Camera not ready. Please allow camera access.");
+        return;
+      }
+
       loader.style.display = 'block';
       statusText.style.display = 'block';
 
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+
+      if (!canvas.width || !canvas.height) {
+        loader.style.display = 'none';
+        statusText.style.display = 'none';
+        alert('❌ Unable to capture image. Try again.');
+        return;
+      }
+
       const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0);
 
       const imageData = canvas.toDataURL('image/jpeg');
+      if (!imageData.startsWith('data:image')) {
+        loader.style.display = 'none';
+        statusText.style.display = 'none';
+        alert('❌ Invalid image captured. Try again.');
+        return;
+      }
 
       fetch('/take_attendance', {
         method: 'POST',
@@ -149,12 +171,12 @@
       .then(data => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
-        alert(data.message || 'Attendance recorded successfully!');
+        alert(data.message || '✅ Attendance recorded successfully!');
       })
       .catch(err => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
-        alert('Failed to take attendance. Please try again.');
+        alert('❌ Failed to take attendance. Please try again.');
       });
     });
   </script>
