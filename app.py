@@ -12,9 +12,7 @@ import cv2
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
-
-# 🔥 Increase request size limit to 16MB
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
 
 # === Google Sheets Setup ===
 SCOPES = [
@@ -58,19 +56,39 @@ def take_attendance():
         np_arr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # Save captured image
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         os.makedirs('attendance_images', exist_ok=True)
         save_path = f'attendance_images/face_{timestamp}.jpg'
         cv2.imwrite(save_path, img)
 
-        # Dummy recognition result
+        # Dummy recognition
         student_name = "Anu"
         roll_number = "73"
-
-        # Record attendance
         now = datetime.now()
-        sheet.append_row([now.strftime("%Y-%m-%d %H:%M:%S"), roll_number, student_name, "Present"])
+        formatted_date = now.strftime("%Y-%m-%d")
+
+        all_data = sheet.get_all_values()
+        headers = all_data[0]
+        date_col = None
+
+        if formatted_date in headers:
+            date_col = headers.index(formatted_date)
+        else:
+            date_col = len(headers)
+            sheet.update_cell(1, date_col + 1, formatted_date)
+
+        updated = False
+        for idx, row in enumerate(all_data[1:], start=2):
+            if row[0] == f"{student_name}-{roll_number}":
+                sheet.update_cell(idx, date_col + 1, "Present")
+                updated = True
+                break
+
+        if not updated:
+            new_row = [''] * (date_col + 1)
+            new_row[0] = f"{student_name}-{roll_number}"
+            new_row[date_col] = "Present"
+            sheet.append_row(new_row)
 
         return jsonify({"message": f"✅ Attendance recorded for {student_name} ({roll_number})"})
 
@@ -122,13 +140,11 @@ def upload_to_drive(file_path, file_name, folder_id):
         'parents': [folder_id]
     }
     media = MediaFileUpload(file_path, mimetype='image/png')
-
     uploaded = drive_service.files().create(
         body=file_metadata,
         media_body=media,
         fields='id'
     ).execute()
-
     return uploaded.get('id')
 
 @app.route('/add-student', methods=['GET', 'POST'])
@@ -144,7 +160,6 @@ def add_student():
             try:
                 header, encoded = photo_data.split(",", 1)
                 image_bytes = base64.b64decode(encoded)
-
                 filename = f"{name}.png"
                 os.makedirs("data", exist_ok=True)
                 local_path = os.path.join("data", filename)
@@ -192,6 +207,3 @@ def remove_student():
                 break
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000, debug=True) 
