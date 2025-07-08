@@ -194,4 +194,4 @@ def remove_student():
     return render_template('remove_student.html', students=student_names)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000, debug=True)
+    app.run(host='0.0.0.0', port=10000, debug=True) send below modified code full in one 
