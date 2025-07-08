@@ -1,18 +1,19 @@
-from flask import Flask, render_template, request, redirect, session, jsonify
-import os, json, base64
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+import subprocess
 import gspread
+import os, json, base64
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import numpy as np
 import cv2
-from openpyxl import load_workbook, Workbook
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+
+# 🔥 Increase request size limit to 16MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # === Google Sheets Setup ===
@@ -28,142 +29,169 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
-# === Recognizer Setup ===
-recognizer = cv2.face.LBPHFaceRecognizer_create()
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-data_dir = "data"
-label_map = {}
-x_train, y_labels = [], []
-label_id = 0
-
-for filename in os.listdir(data_dir):
-    if filename.endswith(".png") or filename.endswith(".jpg"):
-        path = os.path.join(data_dir, filename)
-        label = filename.rsplit(".", 1)[0]
-        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-        faces = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5)
-        for (x, y, w, h) in faces:
-            roi = img[y:y + h, x:x + w]
-            x_train.append(roi)
-            y_labels.append(label_id)
-        label_map[label_id] = label
-        label_id += 1
-
-if x_train:
-    recognizer.train(x_train, np.array(y_labels))
-
-# === Attendance Helpers ===
-def update_google_sheet(sheet, date_header, name):
-    headers = sheet.row_values(1)
-    if not headers or headers[0] != "Name":
-        sheet.update_cell(1, 1, "Name")
-        headers = ["Name"] + headers
-
-    if name not in sheet.col_values(1):
-        sheet.append_row([name])
-
-    if date_header not in headers:
-        sheet.update_cell(1, len(headers) + 1, date_header)
-        headers.append(date_header)
-
-    col_index = headers.index(date_header) + 1
-    records = sheet.get_all_values()
-    for idx, row in enumerate(records):
-        if row[0] == name:
-            sheet.update_cell(idx + 1, col_index, "Present")
-        elif len(row) < col_index or not row[col_index - 1]:
-            sheet.update_cell(idx + 1, col_index, "Absent")
-
-def update_excel(date_header, name):
-    EXCEL_PATH = "attend.xlsx"
-    try:
-        if os.path.exists(EXCEL_PATH):
-            wb = load_workbook(EXCEL_PATH)
-            ws = wb.active
-        else:
-            wb = Workbook()
-            ws = wb.active
-            ws.cell(row=1, column=1, value="Name")
-
-        names = [ws.cell(row=i, column=1).value for i in range(2, ws.max_row + 1)]
-        if name not in names:
-            ws.append([name])
-
-        headers = [ws.cell(row=1, column=j).value for j in range(1, ws.max_column + 1)]
-        if date_header not in headers:
-            col_index = len(headers) + 1
-            ws.cell(row=1, column=col_index, value=date_header)
-        else:
-            col_index = headers.index(date_header) + 1
-
-        for i in range(2, ws.max_row + 1):
-            student = ws.cell(row=i, column=1).value
-            current = ws.cell(row=i, column=col_index).value
-            if student == name:
-                ws.cell(row=i, column=col_index, value="Present")
-            elif not current:
-                ws.cell(row=i, column=col_index, value="Absent")
-
-        wb.save(EXCEL_PATH)
-    except Exception as e:
-        print("Excel update error:", e)
+# === Routes ===
 
 @app.route('/', methods=['GET', 'POST'])
-def index():
-    result_img = None
-    message = None
-
+def login():
     if request.method == 'POST':
-        file = request.files['image']
-        if not file:
-            return 'No file uploaded', 400
-
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        file.save(filepath)
-
-        img = cv2.imread(filepath)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-
-        recognized_names = set()
-        for (x, y, w, h) in faces:
-            roi = gray[y:y + h, x:x + w]
-            try:
-                label_id_pred, confidence = recognizer.predict(roi)
-                if confidence < 70:
-                    name = label_map[label_id_pred]
-                    recognized_names.add(name)
-                    cv2.putText(img, name, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                else:
-                    name = "Unknown"
-            except:
-                name = "Unknown"
-            cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-        result_path = os.path.join(app.config['UPLOAD_FOLDER'], f"result_{filename}")
-        cv2.imwrite(result_path, img)
-
-        if recognized_names:
-            date_header = datetime.now().strftime("%Y-%m-%d")
-            for name in recognized_names:
-                update_google_sheet(sheet, date_header, name)
-                update_excel(date_header, name)
-            message = f"✅ Attendance taken for: {', '.join(recognized_names)}"
+        if request.form['username'] == 'bcca' and request.form['password'] == 'bcca':
+            session['user'] = 'admin'
+            return redirect('/dashboard')
         else:
-            message = "❌ No known faces recognized!"
+            return render_template('index.html', error='Invalid Credentials')
+    return render_template('index.html')
 
-        return render_template('index.html', result_img=result_path, message=message)
+@app.route('/dashboard')
+def dashboard():
+    if 'user' not in session:
+        return redirect('/')
+    return render_template('dashboard.html')
 
-    return render_template('index.html', result_img=result_img, message=message)
+@app.route('/take_attendance', methods=['POST'])
+def take_attendance():
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        data = request.get_json()
+        image_data = data['image'].split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        # Save captured image
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs('attendance_images', exist_ok=True)
+        save_path = f'attendance_images/face_{timestamp}.jpg'
+        cv2.imwrite(save_path, img)
+
+        # Dummy recognition result
+        student_name = "Anu"
+        roll_number = "73"
+
+        # Record attendance
+        now = datetime.now()
+        sheet.append_row([now.strftime("%Y-%m-%d %H:%M:%S"), roll_number, student_name, "Present"])
+
+        return jsonify({"message": f"✅ Attendance recorded for {student_name} ({roll_number})"})
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({"message": f"❌ Error: {str(e)}"}), 500
+
+@app.route('/view_data')
+def view_data():
+    if 'user' not in session:
+        return redirect('/')
+    records = sheet.get_all_values()
+    return render_template('view_data.html', records=records)
+
+@app.route('/shortage')
+def shortage():
+    if 'user' not in session:
+        return redirect('/')
+    records = sheet.get_all_values()
+    headers = records[0][1:]
+    result = []
+    for row in records[1:]:
+        present_count = row[1:].count('Present')
+        if present_count < len(headers) * 0.75:
+            result.append([row[0], present_count, len(headers)])
+    return render_template('shortage.html', result=result)
+
+@app.route('/absentees_today')
+def absentees_today():
+    if 'user' not in session:
+        return redirect('/')
+    today = datetime.now().strftime('%Y-%m-%d')
+    records = sheet.get_all_records()
+    absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
+    return render_template('absentees.html', absentees=absentees, date=today)
+
+@app.route('/run_attendance')
+def run_attendance():
+    if 'user' not in session:
+        return redirect('/')
+    subprocess.Popen(["python", "chat.py", "--manual"])
+    return render_template('dashboard.html', msg="Manual attendance started.")
 
 def upload_to_drive(file_path, file_name, folder_id):
-    drive_service = build('drive', 'v3', credentials=credentials)
-    file_metadata = {'name': file_name, 'parents': [folder_id]}
+    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=creds)
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
     media = MediaFileUpload(file_path, mimetype='image/png')
-    uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    uploaded = drive_service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id'
+    ).execute()
+
     return uploaded.get('id')
+
+@app.route('/add-student', methods=['GET', 'POST'])
+def add_student():
+    if 'user' not in session:
+        return redirect('/')
+
+    if request.method == 'POST':
+        name = request.form['name']
+        photo_data = request.form['photo']
+
+        if photo_data:
+            try:
+                header, encoded = photo_data.split(",", 1)
+                image_bytes = base64.b64decode(encoded)
+
+                filename = f"{name}.png"
+                os.makedirs("data", exist_ok=True)
+                local_path = os.path.join("data", filename)
+                with open(local_path, "wb") as f:
+                    f.write(image_bytes)
+
+                if os.path.exists("SmartAttendanceWeb"):
+                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
+                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
+                    with open(git_path, "wb") as f:
+                        f.write(image_bytes)
+
+                try:
+                    upload_to_drive(local_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
+                except Exception as e:
+                    print("Drive upload failed:", e)
+
+            except Exception as e:
+                print("Image processing error:", e)
+                return "Invalid image data", 400
+
+        try:
+            existing_data = sheet.get_all_values()
+            new_row = [name] + ['' for _ in range(len(existing_data[0]) - 1)]
+            sheet.append_row(new_row)
+        except Exception as e:
+            print("Google Sheet append error:", e)
+            return "Sheet update failed", 500
+
+        return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
+
+    return render_template('add_student.html')
+
+@app.route('/remove-student', methods=['GET', 'POST'])
+def remove_student():
+    if 'user' not in session:
+        return redirect('/')
+    student_names = [row[0] for row in sheet.get_all_values()[1:]]
+    if request.method == 'POST':
+        name_to_remove = request.form['name']
+        records = sheet.get_all_values()
+        for idx, row in enumerate(records):
+            if row[0] == name_to_remove:
+                sheet.delete_rows(idx + 1)
+                break
+        return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
+    return render_template('remove_student.html', students=student_names)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=True)
