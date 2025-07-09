@@ -14,8 +14,11 @@ app.secret_key = 'secret_key'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # === Google Sheets & Drive Setup ===
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-creds_b64 = os.environ.get('GOOGLE_CREDS_B64')
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+creds_b64 = os.environ['GOOGLE_CREDS_B64']
 creds_json = base64.b64decode(creds_b64).decode('utf-8')
 credentials = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
 gc = gspread.authorize(credentials)
