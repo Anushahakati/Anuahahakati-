@@ -125,7 +125,7 @@
 
     let cameraReady = false;
 
-    // Initialize webcam stream
+    // 🎥 Initialize webcam
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         video.srcObject = stream;
@@ -135,10 +135,9 @@
         alert('❌ Camera access failed: ' + err.message);
       });
 
-    // Handle Attendance Button
     takeAttendanceBtn.addEventListener('click', () => {
       if (!cameraReady) {
-        alert("❌ Camera not ready. Please allow camera access.");
+        alert("❌ Camera not ready. Please allow access.");
         return;
       }
 
@@ -158,22 +157,15 @@
 
       const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0);
-
       const base64Data = canvas.toDataURL('image/jpeg');
-      if (!base64Data.startsWith('data:image')) {
-        loader.style.display = 'none';
-        statusText.style.display = 'none';
-        alert('❌ Invalid image captured. Try again.');
-        return;
-      }
 
-      // ✅ Updated fetch code you asked for
+      // ✅ Corrected and final fetch block
       fetch('/take_attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ image: base64Data }) // base64Data is your image string
+        body: JSON.stringify({ image: base64Data })
       })
       .then(res => res.json())
       .then(data => {
