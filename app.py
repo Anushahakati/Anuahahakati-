@@ -204,7 +204,7 @@ def remove_student():
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
 
-# ✨ New route added here
+# ✨ Updated take_attendance route
 @app.route('/take_attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
@@ -234,31 +234,31 @@ def take_attendance():
 
         wb_path = 'attend.xlsx'
         inp = 'CS101'
-        rb = load_workbook(wb_path)
+        wb = load_workbook(wb_path)
 
-        if inp not in rb.sheetnames:
-            sheetx = rb.create_sheet(inp)
-            sheetx.cell(row=1, column=1, value='Name-Rollno')
+        if inp not in wb.sheetnames:
+            sheet = wb.create_sheet(inp)
+            sheet.cell(row=1, column=1, value='Name-Rollno')
         else:
-            sheetx = rb[inp]
+            sheet = wb[inp]
 
-        column_number = sheetx.max_column + 1
+        col = sheet.max_column + 1
         today = datetime.now().strftime('%Y-%m-%d')
-        sheetx.cell(row=1, column=column_number, value=today)
+        sheet.cell(row=1, column=col, value=today)
 
         found = False
-        for cell in sheetx['A']:
+        for cell in sheet['A']:
             if cell.value == name:
                 row = cell.row
                 found = True
                 break
 
         if not found:
-            row = sheetx.max_row + 1
-            sheetx.cell(row=row, column=1, value=name)
+            row = sheet.max_row + 1
+            sheet.cell(row=row, column=1, value=name)
 
-        sheetx.cell(row=row, column=column_number, value="Present")
-        rb.save(wb_path)
+        sheet.cell(row=row, column=col, value="Present")
+        wb.save(wb_path)
 
         return jsonify({'message': f'✅ {name} marked Present'})
 
