@@ -22,8 +22,6 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
-# === Routes ===
-
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -45,34 +43,31 @@ def run_attendance():
     if 'user' not in session:
         return redirect('/')
 
-    inp = 'CS101'  # Replace with your logic
+    inp = 'CS101'
     wb_path = 'attend.xlsx'
     rb = load_workbook(wb_path)
 
     if inp in rb.sheetnames:
         sheetx = rb[inp]
-        sheetx.cell(row=1, column=1, value='Name-Rollno')
-        column_number = sheetx.max_column + 1
     else:
         sheetx = rb.create_sheet(inp)
         sheetx.cell(row=1, column=1, value='Name-Rollno')
-        column_number = 2
 
-    attendance_time = datetime.now().strftime("%m/%d/%Y")
+    column_number = sheetx.max_column + 1
+    attendance_time = datetime.now().strftime("%Y-%m-%d")
     sheetx.cell(row=1, column=column_number, value=attendance_time)
 
-    TIME_LIMIT_SECONDS = 5
-    start_time = time.time()
     already_marked = set()
+    TIME_LIMIT_SECONDS = 10
+    start_time = time.time()
 
-    capture = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0)
     detector = cv2.QRCodeDetector()
 
-    while True:
-        if time.time() - start_time > TIME_LIMIT_SECONDS:
-            break
+    os.makedirs("attendance_images", exist_ok=True)
 
-        ret, frame = capture.read()
+    while time.time() - start_time < TIME_LIMIT_SECONDS:
+        ret, frame = cap.read()
         if not ret:
             break
 
@@ -92,8 +87,19 @@ def run_attendance():
                     row = sheetx.max_row + 1
                     sheetx.cell(row=row, column=1, value=name)
                     sheetx.cell(row=row, column=column_number, value="Present")
-                already_marked.add(name)
+
                 rb.save(wb_path)
+                already_marked.add(name)
+
+                # Save the captured image
+                filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                save_path = os.path.join("attendance_images", filename)
+                cv2.imwrite(save_path, frame)
+
+                try:
+                    upload_to_drive(save_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
+                except Exception as e:
+                    print("Drive upload failed:", e)
 
                 cv2.putText(frame, f"Scanned: {name}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -101,7 +107,7 @@ def run_attendance():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    capture.release()
+    cap.release()
     cv2.destroyAllWindows()
     return render_template('dashboard.html', msg="✅ Attendance finished (QR Code Based)")
 
@@ -196,6 +202,5 @@ def remove_student():
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
 
-# === Start Server ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
