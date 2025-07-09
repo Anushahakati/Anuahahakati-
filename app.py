@@ -25,6 +25,25 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
+# ✅ Google Sheet Attendance Helper
+def mark_attendance_google_sheet(name):
+    today = datetime.now().strftime("%Y-%m-%d")
+    header = sheet.row_values(1)
+    if today in header:
+        col = header.index(today) + 1
+    else:
+        col = len(header) + 1
+        sheet.update_cell(1, col, today)
+
+    names = sheet.col_values(1)
+    if name in names:
+        row = names.index(name) + 1
+    else:
+        row = len(names) + 1
+        sheet.update_cell(row, 1, name)
+
+    sheet.update_cell(row, col, "Present")
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -204,7 +223,6 @@ def remove_student():
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
 
-# ✨ Updated take_attendance route
 @app.route('/take_attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
@@ -232,40 +250,12 @@ def take_attendance():
         if not name:
             return jsonify({'message': 'Empty QR code data'}), 400
 
-        wb_path = 'attend.xlsx'
-        inp = 'CS101'
-        wb = load_workbook(wb_path)
-
-        if inp not in wb.sheetnames:
-            sheet = wb.create_sheet(inp)
-            sheet.cell(row=1, column=1, value='Name-Rollno')
-        else:
-            sheet = wb[inp]
-
-        col = sheet.max_column + 1
-        today = datetime.now().strftime('%Y-%m-%d')
-        sheet.cell(row=1, column=col, value=today)
-
-        found = False
-        for cell in sheet['A']:
-            if cell.value == name:
-                row = cell.row
-                found = True
-                break
-
-        if not found:
-            row = sheet.max_row + 1
-            sheet.cell(row=row, column=1, value=name)
-
-        sheet.cell(row=row, column=col, value="Present")
-        wb.save(wb_path)
-
+        mark_attendance_google_sheet(name)
         return jsonify({'message': f'✅ {name} marked Present'})
 
     except Exception as e:
         print("Error processing attendance:", str(e))
         return jsonify({'message': 'Something went wrong processing the image'}), 500
 
-# 🚀 Start app
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
