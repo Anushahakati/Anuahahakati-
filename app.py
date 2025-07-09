@@ -60,77 +60,54 @@ def dashboard():
         return redirect('/')
     return render_template('dashboard.html')
 
-@app.route('/run_attendance')
-def run_attendance():
+@app.route('/live_attendance')
+def live_attendance():
     if 'user' not in session:
         return redirect('/')
 
-    inp = 'CS101'
-    wb_path = 'attend.xlsx'
-    rb = load_workbook(wb_path)
-
-    if inp in rb.sheetnames:
-        sheetx = rb[inp]
-    else:
-        sheetx = rb.create_sheet(inp)
-        sheetx.cell(row=1, column=1, value='Name-Rollno')
-
-    column_number = sheetx.max_column + 1
-    attendance_time = datetime.now().strftime("%Y-%m-%d")
-    sheetx.cell(row=1, column=column_number, value=attendance_time)
-
-    already_marked = set()
-    TIME_LIMIT_SECONDS = 10
-    start_time = time.time()
-
     cap = cv2.VideoCapture(0)
-    detector = cv2.QRCodeDetector()
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    already_detected = set()
 
     os.makedirs("attendance_images", exist_ok=True)
+    print("🔄 Starting Live Attendance...")
 
-    while time.time() - start_time < TIME_LIMIT_SECONDS:
+    while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        data, bbox, _ = detector.detectAndDecode(frame)
-        if data:
-            name = data.strip()
-            if name and name not in already_marked:
-                found = False
-                for cell in sheetx['A']:
-                    if cell.value == name:
-                        found = True
-                        row = cell.row
-                        break
-                if found:
-                    sheetx.cell(row=row, column=column_number, value="Present")
-                else:
-                    row = sheetx.max_row + 1
-                    sheetx.cell(row=row, column=1, value=name)
-                    sheetx.cell(row=row, column=column_number, value="Present")
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-                rb.save(wb_path)
-                already_marked.add(name)
+        for (x, y, w, h) in faces:
+            face_id = f"{x}_{y}_{w}_{h}"
+            if face_id not in already_detected:
+                name = f"person_{datetime.now().strftime('%H%M%S')}"
+                image_path = os.path.join("attendance_images", f"{name}.png")
+                cv2.imwrite(image_path, frame)
 
-                filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                save_path = os.path.join("attendance_images", filename)
-                cv2.imwrite(save_path, frame)
+                mark_attendance_google_sheet(name)
+                already_detected.add(face_id)
 
                 try:
-                    upload_to_drive(save_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
+                    upload_to_drive(image_path, f"{name}.png", '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
                 except Exception as e:
                     print("Drive upload failed:", e)
 
-                cv2.putText(frame, f"Scanned: {name}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(frame, f"{name} - Attendance Taken", (x, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                time.sleep(2)
 
-        cv2.imshow('QR Attendance', frame)
+        cv2.imshow("Live Attendance", frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("📴 Attendance stopped by user.")
             break
 
     cap.release()
     cv2.destroyAllWindows()
-    return render_template('dashboard.html', msg="✅ Attendance finished (QR Code Based)")
+    return redirect('/dashboard')
 
 @app.route('/view_data')
 def view_data():
@@ -198,13 +175,6 @@ def add_student():
                 local_path = os.path.join("data", filename)
                 with open(local_path, "wb") as f:
                     f.write(image_bytes)
-
-                if os.path.exists("SmartAttendanceWeb"):
-                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
-                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
-                    with open(git_path, "wb") as f:
-                        f.write(image_bytes)
-
                 upload_to_drive(local_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
             except Exception as e:
                 print("Image processing error:", e)
@@ -235,40 +205,6 @@ def remove_student():
                 break
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
-
-@app.route('/take_attendance', methods=['POST'])
-def take_attendance():
-    if 'user' not in session:
-        return jsonify({'message': 'Unauthorized'}), 401
-
-    data = request.get_json()
-    image_data = data.get('image')
-
-    if not image_data:
-        return jsonify({'message': 'No image received'}), 400
-
-    try:
-        header, encoded = image_data.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        detector = cv2.QRCodeDetector()
-        data, bbox, _ = detector.detectAndDecode(img)
-
-        if not data:
-            return jsonify({'message': 'No QR code detected'}), 400
-
-        name = data.strip()
-        if not name:
-            return jsonify({'message': 'Empty QR code data'}), 400
-
-        mark_attendance_google_sheet(name)
-        return jsonify({'message': f'✅ {name} marked Present'})
-
-    except Exception as e:
-        print("Error processing attendance:", str(e))
-        return jsonify({'message': 'Something went wrong processing the image'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
