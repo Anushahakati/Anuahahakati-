@@ -91,7 +91,6 @@ def run_attendance():
                 rb.save(wb_path)
                 already_marked.add(name)
 
-                # Save the captured image
                 filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 save_path = os.path.join("attendance_images", filename)
                 cv2.imwrite(save_path, frame)
@@ -202,5 +201,68 @@ def remove_student():
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
 
+# ✨ New route added here
+@app.route('/take_attendance', methods=['POST'])
+def take_attendance():
+    if 'user' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    image_data = data.get('image')
+
+    if not image_data:
+        return jsonify({'message': 'No image received'}), 400
+
+    try:
+        header, encoded = image_data.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        detector = cv2.QRCodeDetector()
+        data, bbox, _ = detector.detectAndDecode(img)
+
+        if not data:
+            return jsonify({'message': 'No QR code detected'}), 400
+
+        name = data.strip()
+        if not name:
+            return jsonify({'message': 'Empty QR code data'}), 400
+
+        wb_path = 'attend.xlsx'
+        inp = 'CS101'
+        rb = load_workbook(wb_path)
+
+        if inp not in rb.sheetnames:
+            sheetx = rb.create_sheet(inp)
+            sheetx.cell(row=1, column=1, value='Name-Rollno')
+        else:
+            sheetx = rb[inp]
+
+        column_number = sheetx.max_column + 1
+        today = datetime.now().strftime('%Y-%m-%d')
+        sheetx.cell(row=1, column=column_number, value=today)
+
+        found = False
+        for cell in sheetx['A']:
+            if cell.value == name:
+                row = cell.row
+                found = True
+                break
+
+        if not found:
+            row = sheetx.max_row + 1
+            sheetx.cell(row=row, column=1, value=name)
+
+        sheetx.cell(row=row, column=column_number, value="Present")
+        rb.save(wb_path)
+
+        return jsonify({'message': f'✅ {name} marked Present'})
+
+    except Exception as e:
+        print("Error processing attendance:", str(e))
+        return jsonify({'message': 'Something went wrong processing the image'}), 500
+
+# 🚀 Start app
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
