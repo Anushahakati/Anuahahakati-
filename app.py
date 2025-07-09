@@ -118,7 +118,7 @@ def run_attendance():
                 cv2.imwrite(save_path, frame)
 
                 try:
-                    upload_to_drive(save_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
+                    upload_to_drive(save_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
                 except Exception as e:
                     print("Drive upload failed:", e)
 
@@ -156,10 +156,23 @@ def shortage():
 def absentees_today():
     if 'user' not in session:
         return redirect('/')
-    today = datetime.now().strftime('%Y-%m-%d')
-    records = sheet.get_all_records()
-    absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
-    return render_template('absentees.html', absentees=absentees, date=today)
+    try:
+        all_data = sheet.get_all_values()
+        if not all_data or len(all_data) < 2:
+            return render_template('absentees.html', absentees=[], date=datetime.now().strftime('%Y-%m-%d'))
+
+        today = datetime.now().strftime('%Y-%m-%d')
+        headers = all_data[0]
+        if today not in headers:
+            return render_template('absentees.html', absentees=[], date=today)
+
+        records = sheet.get_all_records()
+        absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
+        return render_template('absentees.html', absentees=absentees, date=today)
+
+    except Exception as e:
+        print("Absentees fetch error:", e)
+        return render_template('absentees.html', absentees=[], date=datetime.now().strftime('%Y-%m-%d'))
 
 def upload_to_drive(file_path, file_name, folder_id):
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
@@ -192,7 +205,7 @@ def add_student():
                     with open(git_path, "wb") as f:
                         f.write(image_bytes)
 
-                upload_to_drive(local_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
+                upload_to_drive(local_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
             except Exception as e:
                 print("Image processing error:", e)
                 return "Invalid image data", 400
