@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, jsonify, url_for
 import gspread
 import os, json, base64, time
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from werkzeug.middleware.proxy_fix import ProxyFix
 from openpyxl import load_workbook
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+import numpy as np
 import cv2
 
 app = Flask(__name__)
@@ -63,7 +65,6 @@ def run_attendance():
     start_time = time.time()
     already_marked = set()
 
-    # Initialize QR scanner
     capture = cv2.VideoCapture(0)
     detector = cv2.QRCodeDetector()
 
@@ -79,7 +80,6 @@ def run_attendance():
         if data:
             name = data.strip()
             if name and name not in already_marked:
-                # Check if name already exists
                 found = False
                 for cell in sheetx['A']:
                     if cell.value == name:
@@ -95,7 +95,6 @@ def run_attendance():
                 already_marked.add(name)
                 rb.save(wb_path)
 
-                # Visual feedback
                 cv2.putText(frame, f"Scanned: {name}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         cv2.imshow('QR Attendance', frame)
@@ -105,6 +104,97 @@ def run_attendance():
     capture.release()
     cv2.destroyAllWindows()
     return render_template('dashboard.html', msg="✅ Attendance finished (QR Code Based)")
+
+@app.route('/view_data')
+def view_data():
+    if 'user' not in session:
+        return redirect('/')
+    records = sheet.get_all_values()
+    return render_template('view_data.html', records=records)
+
+@app.route('/shortage')
+def shortage():
+    if 'user' not in session:
+        return redirect('/')
+    records = sheet.get_all_values()
+    headers = records[0][1:]
+    result = []
+    for row in records[1:]:
+        present_count = row[1:].count('Present')
+        if present_count < len(headers) * 0.75:
+            result.append([row[0], present_count, len(headers)])
+    return render_template('shortage.html', result=result)
+
+@app.route('/absentees_today')
+def absentees_today():
+    if 'user' not in session:
+        return redirect('/')
+    today = datetime.now().strftime('%Y-%m-%d')
+    records = sheet.get_all_records()
+    absentees = [r['Name'] for r in records if r.get(today) == 'Absent']
+    return render_template('absentees.html', absentees=absentees, date=today)
+
+def upload_to_drive(file_path, file_name, folder_id):
+    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=creds)
+    file_metadata = {'name': file_name, 'parents': [folder_id]}
+    media = MediaFileUpload(file_path, mimetype='image/png')
+    uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return uploaded.get('id')
+
+@app.route('/add-student', methods=['GET', 'POST'])
+def add_student():
+    if 'user' not in session:
+        return redirect('/')
+    if request.method == 'POST':
+        name = request.form['name']
+        photo_data = request.form['photo']
+        if photo_data:
+            try:
+                header, encoded = photo_data.split(",", 1)
+                image_bytes = base64.b64decode(encoded)
+                filename = f"{name}.png"
+                os.makedirs("data", exist_ok=True)
+                local_path = os.path.join("data", filename)
+                with open(local_path, "wb") as f:
+                    f.write(image_bytes)
+
+                if os.path.exists("SmartAttendanceWeb"):
+                    os.makedirs(os.path.join("SmartAttendanceWeb", "data"), exist_ok=True)
+                    git_path = os.path.join("SmartAttendanceWeb", "data", filename)
+                    with open(git_path, "wb") as f:
+                        f.write(image_bytes)
+
+                upload_to_drive(local_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
+            except Exception as e:
+                print("Image processing error:", e)
+                return "Invalid image data", 400
+
+        try:
+            existing_data = sheet.get_all_values()
+            new_row = [name] + ['' for _ in range(len(existing_data[0]) - 1)]
+            sheet.append_row(new_row)
+        except Exception as e:
+            print("Google Sheet append error:", e)
+            return "Sheet update failed", 500
+
+        return render_template('dashboard.html', msg="Student added and photo uploaded successfully.")
+    return render_template('add_student.html')
+
+@app.route('/remove-student', methods=['GET', 'POST'])
+def remove_student():
+    if 'user' not in session:
+        return redirect('/')
+    student_names = [row[0] for row in sheet.get_all_values()[1:]]
+    if request.method == 'POST':
+        name_to_remove = request.form['name']
+        records = sheet.get_all_values()
+        for idx, row in enumerate(records):
+            if row[0] == name_to_remove:
+                sheet.delete_rows(idx + 1)
+                break
+        return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
+    return render_template('remove_student.html', students=student_names)
 
 # === Start Server ===
 if __name__ == '__main__':
