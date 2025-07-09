@@ -109,6 +109,11 @@
   <button id="takeAttendanceBtn">Take Attendance</button>
   <button id="backBtn" onclick="location.href='/dashboard'">Back to Dashboard</button>
 
+  <!-- 🔽 FORM BUTTON FOR QR ATTENDANCE FALLBACK -->
+  <form action="{{ url_for('run_attendance') }}" method="get" style="margin-top: 20px;">
+    <button type="submit" style="background-color:#333; color:#fff;">Use QR Code Instead</button>
+  </form>
+
   <div class="loader" id="loader"></div>
   <p id="status">Please wait while attendance is being recorded...</p>
 
