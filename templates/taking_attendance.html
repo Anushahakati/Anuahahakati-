@@ -159,20 +159,23 @@
       const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0);
 
-      const imageData = canvas.toDataURL('image/jpeg');
-      if (!imageData.startsWith('data:image')) {
+      const base64Data = canvas.toDataURL('image/jpeg');
+      if (!base64Data.startsWith('data:image')) {
         loader.style.display = 'none';
         statusText.style.display = 'none';
         alert('❌ Invalid image captured. Try again.');
         return;
       }
 
+      // ✅ Updated fetch code you asked for
       fetch('/take_attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ image: base64Data }) // base64Data is your image string
       })
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
@@ -181,6 +184,7 @@
       .catch(err => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
+        console.error('Error:', err);
         alert('❌ Failed to take attendance. Please try again.');
       });
     });
