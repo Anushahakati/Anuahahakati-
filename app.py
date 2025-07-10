@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for, Response
 import gspread
-import os, json, base64, time, tempfile, shutil
+import os, json, base64, time, shutil
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from openpyxl import load_workbook
@@ -8,8 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import numpy as np
 import cv2
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+import tempfile
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
@@ -26,6 +25,7 @@ credentials = Credentials.from_service_account_info(json.loads(creds_json), scop
 gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
+FOLDER_ID = '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm'
 
 # ✅ Google Sheet Attendance Helper
 def mark_attendance_google_sheet(name):
@@ -46,18 +46,28 @@ def mark_attendance_google_sheet(name):
 
     sheet.update_cell(row, col, "Present")
 
-# ✅ Google Drive ORB Face Matching Setup
-FOLDER_ID = "1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm"
+def upload_to_drive(file_path, file_name, folder_id):
+    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=creds)
+    file_metadata = {'name': file_name, 'parents': [folder_id]}
+    media = MediaFileUpload(file_path, mimetype='image/png')
+    uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return uploaded.get('id')
+
 def download_all_drive_images():
-    gauth = GoogleAuth()
-    gauth.LoadCredentialsFile("credentials.json")
-    drive = GoogleDrive(gauth)
-    temp_dir = tempfile.mkdtemp()
+    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=creds)
     query = f"'{FOLDER_ID}' in parents and trashed=false"
-    file_list = drive.ListFile({'q': query}).GetList()
-    for file in file_list:
-        if file['title'].endswith('.jpg') or file['title'].endswith('.png'):
-            file.GetContentFile(os.path.join(temp_dir, file['title']))
+    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+    items = results.get('files', [])
+
+    temp_dir = tempfile.mkdtemp()
+    for file in items:
+        if file['name'].endswith('.jpg') or file['name'].endswith('.png'):
+            request = drive_service.files().get_media(fileId=file['id'])
+            file_path = os.path.join(temp_dir, file['name'])
+            with open(file_path, 'wb') as f:
+                f.write(request.execute())
     return temp_dir
 
 def match_faces(live_img, stored_imgs):
@@ -75,6 +85,14 @@ def match_faces(live_img, stored_imgs):
                 return name
     return None
 
+@app.route('/live_camera')
+def live_camera():
+    return render_template('live_camera.html')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 def gen_frames():
     cap = cv2.VideoCapture(0)
     attendance_taken = set()
@@ -91,8 +109,7 @@ def gen_frames():
         if matched_person and matched_person not in attendance_taken:
             mark_attendance_google_sheet(matched_person)
             attendance_taken.add(matched_person)
-            cv2.putText(frame, f"{matched_person} - Attendance Taken", (20, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"{matched_person} - Attendance Taken", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
@@ -109,13 +126,10 @@ def login():
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-@app.route('/attendance_status')
-def attendance_status():
-    return jsonify({"status": "Attendance Taken"})
+@app.route('/view_data')
+def view_data():
+    records = sheet.get_all_values()
+    return render_template('view_data.html', records=records)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
