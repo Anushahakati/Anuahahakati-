@@ -109,6 +109,48 @@ def live_attendance():
     cv2.destroyAllWindows()
     return redirect('/dashboard')
 
+# ✅ NEW: Web Camera Attendance Capture
+@app.route('/take_attendance', methods=['POST'])
+def take_attendance():
+    if 'user' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json()
+        image_data = data.get('image')
+        if not image_data:
+            print("No image data received.")
+            return jsonify({'message': 'No image received'}), 400
+
+        header, encoded = image_data.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        # Face detection
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+        if len(faces) == 0:
+            return jsonify({'message': 'No face detected'}), 400
+
+        name = "Person_" + datetime.now().strftime('%H%M%S')
+        mark_attendance_google_sheet(name)
+
+        os.makedirs("attendance_images", exist_ok=True)
+        filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        save_path = os.path.join("attendance_images", filename)
+        cv2.imwrite(save_path, img)
+
+        upload_to_drive(save_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
+
+        return jsonify({'message': f'✅ Attendance taken for {name}'})
+    
+    except Exception as e:
+        print("Error in /take_attendance:", e)
+        return jsonify({'message': 'Something went wrong.'}), 500
+
 @app.route('/view_data')
 def view_data():
     if 'user' not in session:
