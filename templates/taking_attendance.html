@@ -104,12 +104,13 @@
 <body>
 
   <h2>Taking Attendance</h2>
+
   <video id="video" autoplay playsinline></video><br>
 
   <button id="takeAttendanceBtn">Take Attendance</button>
   <button id="backBtn" onclick="location.href='/dashboard'">Back to Dashboard</button>
 
-  <!-- 🔽 FORM BUTTON FOR QR ATTENDANCE FALLBACK -->
+  <!-- 🔁 QR fallback form -->
   <form action="{{ url_for('run_attendance') }}" method="get" style="margin-top: 20px;">
     <button type="submit" style="background-color:#333; color:#fff;">Use QR Code Instead</button>
   </form>
@@ -125,7 +126,7 @@
 
     let cameraReady = false;
 
-    // 🎥 Initialize webcam
+    // 🎥 Start camera
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         video.srcObject = stream;
@@ -155,17 +156,15 @@
         return;
       }
 
-      const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0);
-      const base64Data = canvas.toDataURL('image/jpeg');
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
 
-      // ✅ Corrected and final fetch block
+      const imageData = canvas.toDataURL('image/png');
+
       fetch('/take_attendance', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ image: base64Data })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
       })
       .then(res => res.json())
       .then(data => {
@@ -176,8 +175,8 @@
       .catch(err => {
         loader.style.display = 'none';
         statusText.style.display = 'none';
-        console.error('Error:', err);
-        alert('❌ Failed to take attendance. Please try again.');
+        console.error(err);
+        alert("❌ Something went wrong.");
       });
     });
   </script>
