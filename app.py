@@ -103,6 +103,13 @@ def dashboard():
         return redirect('/')
     return render_template('dashboard.html')
 
+@app.route('/view_data')
+def view_data():
+    if 'user' not in session:
+        return redirect('/')
+    records = sheet.get_all_values()
+    return render_template('view_data.html', records=records)
+
 @app.route('/live_attendance')
 def live_attendance():
     if 'user' not in session:
