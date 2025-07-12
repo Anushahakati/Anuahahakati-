@@ -1,21 +1,18 @@
 
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for
 import gspread
-import os, json, base64, time
+import os, json, base64, time, io
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from openpyxl import load_workbook
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 import numpy as np
 import cv2
-import io
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# === Google Sheets & Drive Setup ===
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
@@ -27,7 +24,6 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
-# ✅ Google Sheet Attendance Helper
 def mark_attendance_google_sheet(name):
     today = datetime.now().strftime("%Y-%m-%d")
     header = sheet.row_values(1)
@@ -46,7 +42,6 @@ def mark_attendance_google_sheet(name):
 
     sheet.update_cell(row, col, "Present")
 
-# 🧠 Load training images from Google Drive folder (face training)
 def load_training_data():
     drive_service = build('drive', 'v3', credentials=credentials)
     folder_id = '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm'
@@ -137,7 +132,6 @@ def live_attendance():
         for (x, y, w, h) in faces:
             face_roi = gray[y:y+h, x:x+w]
             label, confidence = recognizer.predict(face_roi)
-
             if confidence < 100:
                 name = label_map[label]
                 if name not in already_detected:
