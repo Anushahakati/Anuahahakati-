@@ -6,9 +6,10 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from openpyxl import load_workbook
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 import numpy as np
 import cv2
+import io
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
@@ -47,7 +48,6 @@ def mark_attendance_google_sheet(name):
 
 # 🧠 Load training images from Google Drive folder (face training)
 def load_training_data():
-    from googleapiclient.discovery import build
     drive_service = build('drive', 'v3', credentials=credentials)
     folder_id = '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm'
     results = drive_service.files().list(q=f"'{folder_id}' in parents and mimeType contains 'image'",
@@ -65,12 +65,15 @@ def load_training_data():
         file_id = file['id']
         file_name = file['name']
         request = drive_service.files().get_media(fileId=file_id)
-        fh = open(f"temp_{file_name}", 'wb')
-        downloader = MediaFileUpload(fh.name)
-        downloader._fd.write(request.execute())
-        fh.close()
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        fh.seek(0)
 
-        img = cv2.imread(fh.name, cv2.IMREAD_GRAYSCALE)
+        file_bytes = np.asarray(bytearray(fh.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
         if img is None:
             continue
 
@@ -81,7 +84,6 @@ def load_training_data():
             labels.append(count)
             label_map[count] = os.path.splitext(file_name)[0]
             count += 1
-        os.remove(fh.name)
 
     return face_data, labels, label_map
 
