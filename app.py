@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import subprocess
 import gspread
-import os, json, base64
+import os, json, base64, time
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -27,6 +27,25 @@ gc = gspread.authorize(credentials)
 spreadsheet = gc.open_by_key('1WQp2gKH-PpN_YRCXEciqEsDuZITqX3EMA0-oazRcoAs')
 sheet = spreadsheet.worksheet("Attendance")
 
+# ✅ Google Sheet Attendance Helper
+def mark_attendance_google_sheet(name):
+    today = datetime.now().strftime("%Y-%m-%d")
+    header = sheet.row_values(1)
+    if today in header:
+        col = header.index(today) + 1
+    else:
+        col = len(header) + 1
+        sheet.update_cell(1, col, today)
+
+    names = sheet.col_values(1)
+    if name in names:
+        row = names.index(name) + 1
+    else:
+        row = len(names) + 1
+        sheet.update_cell(row, 1, name)
+
+    sheet.update_cell(row, col, "Present")
+
 # === Routes ===
 
 @app.route('/', methods=['GET', 'POST'])
@@ -45,52 +64,85 @@ def dashboard():
         return redirect('/')
     return render_template('dashboard.html')
 
+# ✅ Live Webcam Attendance
+@app.route('/live_attendance')
+def live_attendance():
+    if 'user' not in session:
+        return redirect('/')
+
+    cap = cv2.VideoCapture(0)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    already_detected = set()
+
+    os.makedirs("attendance_images", exist_ok=True)
+    print("🔄 Starting Live Attendance...")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+        for (x, y, w, h) in faces:
+            face_id = f"{x}_{y}_{w}_{h}"
+            if face_id not in already_detected:
+                name = f"person_{datetime.now().strftime('%H%M%S')}"
+                image_path = os.path.join("attendance_images", f"{name}.png")
+                cv2.imwrite(image_path, frame)
+
+                mark_attendance_google_sheet(name)
+                already_detected.add(face_id)
+
+                try:
+                    upload_to_drive(image_path, f"{name}.png", '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
+                except Exception as e:
+                    print("Drive upload failed:", e)
+
+                cv2.putText(frame, f"{name} - Attendance Taken", (x, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                time.sleep(2)
+
+        cv2.imshow("Live Attendance", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("📴 Attendance stopped by user.")
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+    return redirect('/dashboard')
+
 @app.route('/take_attendance', methods=['POST'])
 def take_attendance():
     if 'user' not in session:
-        return redirect('/')
+        return jsonify({'message': 'Unauthorized'}), 401
     try:
         data = request.get_json()
-        image_data = data['image'].split(',')[1]
-        image_bytes = base64.b64decode(image_data)
+        image_data = data['image']
+        header, encoded = image_data.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
         np_arr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        os.makedirs('attendance_images', exist_ok=True)
-        save_path = f'attendance_images/face_{timestamp}.jpg'
+        # Detect face
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        if len(faces) == 0:
+            return jsonify({'message': 'No face detected'}), 400
+
+        # Save and mark attendance
+        name = "Person_" + datetime.now().strftime('%H%M%S')
+        mark_attendance_google_sheet(name)
+        os.makedirs("attendance_images", exist_ok=True)
+        filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        save_path = os.path.join("attendance_images", filename)
         cv2.imwrite(save_path, img)
 
-        # Dummy recognition
-        student_name = "Anu"
-        roll_number = "73"
-        now = datetime.now()
-        formatted_date = now.strftime("%Y-%m-%d")
-
-        all_data = sheet.get_all_values()
-        headers = all_data[0]
-        date_col = None
-
-        if formatted_date in headers:
-            date_col = headers.index(formatted_date)
-        else:
-            date_col = len(headers)
-            sheet.update_cell(1, date_col + 1, formatted_date)
-
-        updated = False
-        for idx, row in enumerate(all_data[1:], start=2):
-            if row[0] == f"{student_name}-{roll_number}":
-                sheet.update_cell(idx, date_col + 1, "Present")
-                updated = True
-                break
-
-        if not updated:
-            new_row = [''] * (date_col + 1)
-            new_row[0] = f"{student_name}-{roll_number}"
-            new_row[date_col] = "Present"
-            sheet.append_row(new_row)
-
-        return jsonify({"message": f"✅ Attendance recorded for {student_name} ({roll_number})"})
+        upload_to_drive(save_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
+        return jsonify({"message": f"✅ Attendance recorded for {name}"})
 
     except Exception as e:
         print("Error:", e)
@@ -172,10 +224,7 @@ def add_student():
                     with open(git_path, "wb") as f:
                         f.write(image_bytes)
 
-                try:
-                    upload_to_drive(local_path, filename, '146S39x63_ycnNpv9vgtLOE18cx-54ghG')
-                except Exception as e:
-                    print("Drive upload failed:", e)
+                upload_to_drive(local_path, filename, '1kdtb-fm3ORGf-ZTJ75VPu5uh_e5NYOUm')
 
             except Exception as e:
                 print("Image processing error:", e)
@@ -207,3 +256,6 @@ def remove_student():
                 break
         return render_template('remove_student.html', students=[row[0] for row in sheet.get_all_values()[1:]], msg=f"{name_to_remove} removed.")
     return render_template('remove_student.html', students=student_names)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
